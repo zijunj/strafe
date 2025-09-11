@@ -1,12 +1,41 @@
-# React + Vite
+# 🕹 Valorant Esports Statistics Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern web application that displays professional **Valorant** esports match data, tournaments, and team statistics. Built using **React** with **Vite**, the app features real-time data, user-friendly design, and AI-powered stat insights via the OpenAI API.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 💡 Features
 
-## Expanding the ESLint configuration
+- 🔥 **Live Match Tracking**  
+  Shows upcoming and recent Valorant matches with match metadata and countdowns.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- 🧠 **AI Stat Assistant**  
+  Integrates the **OpenAI API** for natural language queries about players and matches.
+
+- ⚛️ **Responsive Interface with Tailwind CSS**  
+  Optimized for all devices with a clean, esports-style design.
+
+- ☁️ **Cloud Ready with AWS (Planned)**  
+  Deployment to **AWS Amplify** or **S3 + CloudFront** is planned for production.
+
+---
+
+## 🧰 Tech Stack
+
+- **Frontend:** React + Vite, Tailwind CSS
+- **Auth & DB:** Supabase (PostgreSQL)
+- **AI Integration:** OpenAI API
+- **Cloud Hosting:** AWS (Amplify, S3, CloudFront, Lambda)
+- **Dev Tools:** ESLint, Prettier, GitHub
+
+---
+
+## 🚀 Getting Started
+
+```bash
+git clone https://github.com/your-username/valorant-esports-app.git
+cd valorant-esports-app
+npm install
+npm run dev
+
+```

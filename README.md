@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🕹 Valorant Esports Statistics Platform
 
-## Getting Started
+A modern web application that displays professional **Valorant** esports match data, tournaments, and team statistics. Originally built using **React + Vite**, the project has now migrated to **Next.js** to leverage features like server-side rendering and API routes for better scalability and performance.
 
-First, run the development server:
+> 🎯 Now powered by **Next.js 13+ App Router**, with planned support for **web scraping** to enhance data coverage and reliability.
+
+---
+
+## 💡 Features
+
+- 🔥 **Live Match Tracking**  
+  Shows upcoming and recent Valorant matches with match metadata and countdowns.
+
+- 🧠 **AI Stat Assistant**  
+  Integrates the **OpenAI API** for natural language queries about players and matches.
+
+- ⚛️ **Responsive Interface with Tailwind CSS**  
+  Optimized for all devices with a clean, esports-style design.
+
+- 🧾 **Web Scraping Support (Planned)**  
+  Will use tools like **Cheerio** or **Puppeteer** to extract additional data directly from esports sites.
+
+- ☁️ **Cloud Ready with AWS (Planned)**  
+  Deployment to **AWS Amplify** or **S3 + CloudFront** is planned for production.
+
+---
+
+## 🧰 Tech Stack
+
+- **Frontend:** Next.js (App Router), Tailwind CSS
+- **Auth & DB:** Supabase (PostgreSQL)
+- **AI Integration:** OpenAI API (ChatGPT)
+- **Data Layer:** Web scraping (planned), Public Esports APIs
+- **Cloud Hosting:** AWS (Amplify, S3, CloudFront, Lambda)
+- **Dev Tools:** ESLint, Prettier, GitHub
+
+---
+
+## 🚀 Getting Started
 
 ```bash
+git clone https://github.com/your-username/valorant-esports-app.git
+cd valorant-esports-app
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠 Migration Notes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project was migrated from a **React + Vite** SPA to a **Next.js App Router** architecture to:
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Improve performance using server-side rendering (SSR)
+- Simplify backend proxying with built-in API routes
+- Prepare for server-side data scraping and AI responses

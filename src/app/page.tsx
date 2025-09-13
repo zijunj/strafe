@@ -6,8 +6,24 @@ import News from "@/components/News";
 import Results from "@/components/Results";
 import Image from "next/image";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+
+type NewsImg = {
+  img: string;
+};
 
 export default function HomePage() {
+  const [articleImg, setArticleImg] = useState<NewsImg | null>(null);
+
+  useEffect(() => {
+    const fetchNewsImg = async () => {
+      const res = await fetch("/api/newsImg");
+      const data = await res.json();
+      setArticleImg(data.articles[0]);
+    };
+
+    fetchNewsImg();
+  }, []);
   return (
     <div className="max-w-7xl mx-auto flex items-start gap-6">
       {/* Left Column */}
@@ -32,11 +48,16 @@ export default function HomePage() {
 
         {/* News Card */}
         <div className="relative bg-[#151515] h-[366px] w-full rounded-lg overflow-hidden border border-[#151515] ring-1 ring-stone-700 group">
-          <div className="relative h-[250px] w-full overflow-hidden">
-            <div className="absolute inset-0 bg-[url('/news.png')] bg-center bg-no-repeat bg-cover transition-transform duration-500 ease-in-out scale-100 group-hover:scale-105 group-hover:brightness-110" />
+          <div className="relative h-[310px] w-full overflow-hidden">
+            {articleImg && (
+              <div
+                className="absolute inset-0 bg-center bg-no-repeat bg-cover transition-transform duration-500 ease-in-out scale-100 group-hover:scale-105 group-hover:brightness-110"
+                style={{ backgroundImage: `url(${articleImg.img})` }}
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#151515]" />
           </div>
-          <div className="relative -mt-20 px-6">
+          <div className="relative -mt-30 px-6">
             <News />
           </div>
         </div>

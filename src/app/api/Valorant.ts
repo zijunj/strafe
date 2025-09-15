@@ -34,7 +34,7 @@ export default function useValorantApiWithCache<T>({
       }
     };
 
-    if (!cache) fetchData();
+    fetchData();
   }, [key, url]);
 
   return { data, loading };

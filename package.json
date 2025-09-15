@@ -12,6 +12,7 @@
     "@supabase/supabase-js": "^2.57.4",
     "axios": "^1.12.1",
     "cheerio": "^1.1.2",
+    "dayjs": "^1.11.18",
     "next": "15.5.2",
     "openai": "^5.20.1",
     "react": "19.1.0",

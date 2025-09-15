@@ -72,15 +72,19 @@ export default function HomePage() {
 
       {/* Right Column: Matches and Results */}
       <div className="w-[320px] mt-[80px] space-y-6">
-        <div className="bg-[#1E1E1E] rounded-lg border border-[#151515] ring-1 ring-stone-700">
-          <h2 className="text-m font-bold text-white mb-2 p-4">
+        <div className="bg-[#1E1E1E] rounded-lg border border-[#151515] ring-1 ring-[#2E2E2E]">
+          <h2 className="text-sm font-bold text-white mb-2 px-4 pt-4">
             UPCOMING VALORANT MATCHES
           </h2>
-          <Matches matchView="upcoming" />
+
+          {/* Matches List */}
+          <Matches pageView="home" />
+
+          {/* Footer Link */}
           <div className="border-t border-[#2e2e2e] text-center">
             <Link
               href="/matches"
-              className="block py-2 text-yellow-300 text-sm font-semibold hover:underline"
+              className="block py-3 text-[#FFE44F] text-xs font-bold tracking-wide hover:underline"
             >
               ALL UPCOMING MATCHES →
             </Link>
@@ -89,9 +93,9 @@ export default function HomePage() {
 
         <div className="bg-[#1E1E1E] rounded-lg border border-[#151515] ring-1 ring-stone-700">
           <h2 className="text-m font-bold text-white mb-2 p-4">
-            LATEST VALORANT MATCHES
+            LATEST VALORANT RESULTS
           </h2>
-          <Results />
+          <Results pageView="home" />
           <div className="border-t border-[#2e2e2e] text-center">
             <Link
               href="/matches"

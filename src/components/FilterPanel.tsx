@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
 
-// Define the props and filters shape
 interface Filters {
   eventSeries: string;
   region: string;
@@ -14,11 +13,20 @@ interface Filters {
 interface FilterPanelProps {
   filters: Filters;
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+  onApply: (region: string, timespan: string, minRating: number) => void; // ✅ added minRating
 }
 
-export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
+export default function FilterPanel({
+  filters,
+  setFilters,
+  onApply,
+}: FilterPanelProps) {
+  // stage *all* filters locally
+  const [stagedFilters, setStagedFilters] = useState(filters);
+
   return (
     <div className="bg-gray-800 text-white p-6 rounded-md shadow-md max-w-6xl mx-auto">
+      {/* Labels */}
       <div className="grid grid-cols-6 gap-4 mb-4 text-xs text-pink-400 font-semibold">
         <label htmlFor="eventSeries">EVENT SERIES</label>
         <label htmlFor="region">REGION</label>
@@ -28,25 +36,30 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
         <label htmlFor="map">MAP</label>
       </div>
 
+      {/* Inputs */}
       <div className="grid grid-cols-6 gap-4 mb-4">
+        {/* eventSeries */}
         <select
           id="eventSeries"
           className="bg-gray-700 p-2 rounded"
-          value={filters.eventSeries}
+          value={stagedFilters.eventSeries}
           onChange={(e) =>
-            setFilters((prev) => ({ ...prev, eventSeries: e.target.value }))
+            setStagedFilters((prev) => ({
+              ...prev,
+              eventSeries: e.target.value,
+            }))
           }
         >
           <option value="all">All</option>
-          {/* Add more event series options here */}
         </select>
 
+        {/* region */}
         <select
           id="region"
           className="bg-gray-700 p-2 rounded"
-          value={filters.region}
+          value={stagedFilters.region}
           onChange={(e) =>
-            setFilters((prev) => ({ ...prev, region: e.target.value }))
+            setStagedFilters((prev) => ({ ...prev, region: e.target.value }))
           }
         >
           <option value="all">All</option>
@@ -65,57 +78,83 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
           <option value="cg">Collegiate</option>
         </select>
 
+        {/* minRounds */}
         <input
           type="number"
           id="minRounds"
           className="bg-gray-700 p-2 rounded"
-          value={filters.minRounds}
+          value={stagedFilters.minRounds}
           onChange={(e) =>
-            setFilters((prev) => ({
+            setStagedFilters((prev) => ({
               ...prev,
               minRounds: Number(e.target.value),
             }))
           }
         />
 
+        {/* minRating */}
         <input
           type="number"
           id="minRating"
           className="bg-gray-700 p-2 rounded"
-          value={filters.minRating}
+          value={stagedFilters.minRating}
           onChange={(e) =>
-            setFilters((prev) => ({
+            setStagedFilters((prev) => ({
               ...prev,
               minRating: Number(e.target.value),
             }))
           }
         />
 
+        {/* agent */}
         <select
           id="agent"
           className="bg-gray-700 p-2 rounded"
-          value={filters.agent}
+          value={stagedFilters.agent}
           onChange={(e) =>
-            setFilters((prev) => ({ ...prev, agent: e.target.value }))
+            setStagedFilters((prev) => ({ ...prev, agent: e.target.value }))
           }
         >
           <option value="all">All</option>
-          {/* Add agent options here */}
+          <option value="jett">Jett</option>
+          <option value="sova">Sova</option>
+          <option value="omen">Omen</option>
+          <option value="raze">Raze</option>
+          <option value="reyna">Reyna</option>
+          <option value="sage">Sage</option>
+          <option value="cypher">Cypher</option>
+          <option value="viper">Viper</option>
+          <option value="killjoy">Killjoy</option>
+          <option value="breach">Breach</option>
+          <option value="skye">Skye</option>
+          <option value="yoru">Yoru</option>
+          <option value="astra">Astra</option>
+          <option value="kayo">KAY/O</option>
+          <option value="chamber">Chamber</option>
+          <option value="neon">Neon</option>
+          <option value="fade">Fade</option>
+          <option value="harbor">Harbor</option>
+          <option value="gekko">Gekko</option>
+          <option value="deadlock">Deadlock</option>
+          <option value="iso">Iso</option>
+          <option value="clove">Clove</option>
+          <option value="vyse">Vyse</option>
         </select>
 
+        {/* map */}
         <select
           id="map"
           className="bg-gray-700 p-2 rounded"
-          value={filters.map}
+          value={stagedFilters.map}
           onChange={(e) =>
-            setFilters((prev) => ({ ...prev, map: e.target.value }))
+            setStagedFilters((prev) => ({ ...prev, map: e.target.value }))
           }
         >
           <option value="all">All</option>
-          {/* Add map options here */}
         </select>
       </div>
 
+      {/* Timespan row */}
       <div className="grid grid-cols-6 gap-4 text-xs text-pink-400 font-semibold mb-2">
         <label htmlFor="timespan">TIMESPAN</label>
       </div>
@@ -123,10 +162,10 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
       <div className="grid grid-cols-6 gap-4">
         <select
           id="timespan"
-          className="bg-gray-700 p-2 rounded"
-          value={filters.timespan}
+          className="bg-gray-700 p-2 rounded col-span-2"
+          value={stagedFilters.timespan}
           onChange={(e) =>
-            setFilters((prev) => ({ ...prev, timespan: e.target.value }))
+            setStagedFilters((prev) => ({ ...prev, timespan: e.target.value }))
           }
         >
           <option value="30">Past 30 days</option>
@@ -135,9 +174,17 @@ export default function FilterPanel({ filters, setFilters }: FilterPanelProps) {
           <option value="all">All Time</option>
         </select>
 
+        {/* Apply button */}
         <button
           className="col-span-1 bg-red-500 text-white font-bold p-2 rounded hover:bg-red-600"
-          onClick={() => console.log("Filters:", filters)}
+          onClick={() => {
+            setFilters(stagedFilters); // push all staged values
+            onApply(
+              stagedFilters.region,
+              stagedFilters.timespan,
+              stagedFilters.minRating
+            ); // pass 3 for API fetch
+          }}
         >
           Apply Filter
         </button>

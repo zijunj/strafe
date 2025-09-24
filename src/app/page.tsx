@@ -24,6 +24,7 @@ export default function HomePage() {
 
     fetchNewsImg();
   }, []);
+
   return (
     <div className="max-w-7xl mx-auto flex items-start gap-6">
       {/* Left Column */}
@@ -33,8 +34,10 @@ export default function HomePage() {
           <Image
             src="/valorantLogo.png"
             alt="Valorant Logo"
-            width={48}
-            height={48}
+            width={0}
+            height={0}
+            sizes="100vw"
+            className="w-12 h-12 object-contain"
           />
           <div>
             <h1 className="text-3xl font-extrabold text-white">
@@ -63,17 +66,17 @@ export default function HomePage() {
         </div>
 
         {/* Tournament Card */}
-        <div className="relative bg-[#151515] h-[187px] w-full rounded-lg overflow-hidden border border-[#151515] ring-1 ring-stone-700">
+        <div className="relative bg-[#151515] rounded-lg overflow-hidden border border-[#151515] ring-1 ring-stone-700">
           <div className="relative max-w-7xl">
-            <Tournaments />
+            <Tournaments pageView="home" tournamentView="ongoing" />
           </div>
         </div>
       </div>
 
       {/* Right Column: Matches and Results */}
       <div className="w-[320px] mt-[80px] space-y-6">
-        <div className="bg-[#1E1E1E] rounded-lg border border-[#151515] ring-1 ring-[#2E2E2E]">
-          <h2 className="text-sm font-bold text-white mb-2 px-4 pt-4">
+        <div className="bg-[#1E1E1E] rounded-lg border border-[#3c3c3c] ring-1 ring-[#2E2E2E]">
+          <h2 className="text-sm font-bold text-white mb-2 px-4 pt-4 py-4">
             UPCOMING VALORANT MATCHES
           </h2>
 
@@ -81,10 +84,10 @@ export default function HomePage() {
           <Matches pageView="home" />
 
           {/* Footer Link */}
-          <div className="border-t border-[#2e2e2e] text-center">
+          <div className="text-center">
             <Link
               href="/matches"
-              className="block py-3 text-[#FFE44F] text-xs font-bold tracking-wide hover:underline"
+              className="block pb-3 text-[#FFE44F] text-xs font-bold tracking-wide hover:underline"
             >
               ALL UPCOMING MATCHES →
             </Link>
@@ -98,7 +101,7 @@ export default function HomePage() {
           <Results pageView="home" />
           <div className="border-t border-[#2e2e2e] text-center">
             <Link
-              href="/matches"
+              href="/matches?tab=finished"
               className="block py-2 text-yellow-300 text-sm font-semibold hover:underline"
             >
               ALL MATCH RESULTS →

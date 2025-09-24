@@ -1,10 +1,23 @@
 "use client";
 import Matches from "@/components/Matches";
 import Results from "@/components/Results";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 export default function MatchPage() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const [matchView, setMatchView] = useState("upcoming");
+
+  // Sync default tab from query param on mount
+  useEffect(() => {
+    if (tabParam === "finished") {
+      setMatchView("finished");
+    } else {
+      setMatchView("upcoming");
+    }
+  }, [tabParam]);
 
   return (
     <>
@@ -45,7 +58,6 @@ export default function MatchPage() {
         </button>
       </div>
 
-      {/* Matches */}
       {/* Matches */}
       {matchView === "upcoming" ? (
         <Matches pageView="match" />

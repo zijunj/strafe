@@ -1,6 +1,8 @@
 import useValorantApiWithCache from "../app/api/Valorant";
 import React from "react";
 import { getMatchStartTime } from "../app/utils/apiFunctions";
+import Link from "next/link";
+import slugify from "@/app/utils/IdFunctions";
 
 interface MatchProps {
   pageView: string;
@@ -10,76 +12,116 @@ interface MatchProps {
 interface MatchItem {
   match_event: string;
   match_series: string;
+  match_page: string;
   team1: string;
   team2: string;
   unix_timestamp: string;
   time_until_match: string;
 }
 
-export default function Matches({ pageView }: MatchProps) {
-  const { data: matchData = [], loading } = useValorantApiWithCache<
-    MatchItem[]
-  >({
-    key: `upcomingMatches`,
-    url: `match?q=upcoming`,
-    parse: (res) => res.data.segments,
-  });
+interface TournamentItem {
+  title: string;
+  status: string;
+  region: string;
+  thumb: string;
+  dates: string;
+  prize: string;
+  url_path: string;
+}
 
-  if (loading) return <p>Loading...</p>;
+export default function Matches({ pageView }: MatchProps) {
+  const { data: matchData = [], loading: matchesLoading } =
+    useValorantApiWithCache<MatchItem[]>({
+      key: "upcomingMatches",
+      url: "match?q=upcoming",
+      parse: (res) => res.data.segments,
+    });
+
+  const { data: tournamentData = [], loading: tournamentsLoading } =
+    useValorantApiWithCache<TournamentItem[]>({
+      key: "tournaments",
+      url: "events",
+      parse: (res) => res.data.segments,
+    });
+
+  if (matchesLoading || tournamentsLoading) return <p>Loading...</p>;
 
   return (
     <>
       {pageView === "home" && (
-        <section className="max-w-7xl mx-auto ">
-          {(matchData ?? [])
-            .sort(
-              (a, b) =>
-                new Date(a.unix_timestamp).getTime() -
-                new Date(b.unix_timestamp).getTime()
-            )
-            .slice(0, 4)
-            .map((item, i) => {
-              const { hour, minute } = getMatchStartTime(item.unix_timestamp);
+        <section className="max-w-7xl mx-auto">
+          {Object.entries(
+            (matchData ?? [])
+              .sort(
+                (a, b) =>
+                  new Date(a.unix_timestamp).getTime() -
+                  new Date(b.unix_timestamp).getTime()
+              )
+              .slice(0, 8) // take first 8 to allow multiple tournaments
+              .reduce((acc, item) => {
+                const key = item.match_event || "Other Tournament";
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(item);
+                return acc;
+              }, {} as Record<string, MatchItem[]>)
+          ).map(([tournament, matches], i) => (
+            <div key={i} className="mb-4">
+              {/* Tournament Header */}
+              <div className="flex items-center space-x-2 px-4 py-2 bg-[#202020] border-b border-[#1a1a1a]">
+                <span className="text-sm font-semibold text-white">
+                  {tournament}
+                </span>
+              </div>
 
-              return (
-                <div
-                  key={i}
-                  className="flex justify-between items-center p-3 hover:bg-[#2A2A2A] transition border-b border-[#1a1a1a]"
-                >
-                  {/* Left: Time */}
-                  <div className="flex flex-col items-center justify-center text-gray-400 text-sm w-12">
-                    <div className="flex items-start">
-                      <span className="text-2xl leading-none">
-                        {hour.toString().padStart(2, "0")}
-                      </span>
-                      <span className="ml-[1px] text-xs">{minute}</span>
+              {/* Matches under this tournament */}
+              {matches.map((item, j) => {
+                const { hour, minute } = getMatchStartTime(item.unix_timestamp);
+
+                return (
+                  <div
+                    key={j}
+                    className="border-b border-[#3c3c3c] border-t border-[#3c3c3c] flex"
+                  >
+                    {/* Left: Time column (shared across both rows) */}
+                    <div
+                      className="flex flex-col justify-center items-center text-gray-400 text-sm w-12"
+                      style={{
+                        background:
+                          "linear-gradient(to bottom, #202020 50%, #181818 50%)",
+                      }}
+                    >
+                      <div className="flex items-start">
+                        <span className="text-2xl leading-none">
+                          {hour.toString().padStart(2, "0")}
+                        </span>
+                        <span className="ml-[1px] text-xs">{minute}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Center: Teams */}
-                  <div className="flex-1 px-2">
-                    <div className="flex items-center space-x-2">
-                      {/* Team 1 */}
-                      <div className="flex items-center space-x-1">
-                        <span className="text-sm font-medium">
+                    {/* Right: Teams stacked */}
+                    <div className="flex-1">
+                      {/* Team 1 row (lighter) */}
+                      <div className="flex justify-between items-center p-3 bg-[#202020] hover:bg-[#2A2A2A] transition">
+                        <span className="text-sm font-medium text-white">
                           {item.team1}
                         </span>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2 mt-1">
-                      {/* Team 2 */}
-                      <div className="flex items-center space-x-1 text-gray-400">
-                        <span className="text-sm font-medium">
+
+                      {/* Team 2 row (darker) */}
+                      <div className="flex justify-between items-center p-3 bg-[#181818] hover:bg-[#2A2A2A] transition">
+                        <span className="text-sm font-medium text-gray-400">
                           {item.team2}
                         </span>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          ))}
         </section>
       )}
+
       {pageView === "match" && (
         <section className="max-w-7xl mx-auto rounded-lg">
           {Object.entries(
@@ -111,61 +153,87 @@ export default function Matches({ pageView }: MatchProps) {
 
               {/* Matches under this date */}
               {matches.map((item, j) => {
-                const dateObj = new Date(item.unix_timestamp);
-                const hour = dateObj.getHours();
-                const minute = dateObj.getMinutes().toString().padStart(2, "0");
+                const { hour, minute } = getMatchStartTime(item.unix_timestamp);
+
+                // find tournament logo by matching match_event to tournament.title
+                const tournament = (tournamentData ?? []).find(
+                  (t) => t.title === item.match_event
+                );
+                const logo = tournament?.thumb || "/valorantLogo.png";
+                // generate slug from match info
+                const matchPath = item.match_page.replace(
+                  "https://www.vlr.gg/",
+                  ""
+                );
+                const [id, slug] = matchPath.split("/", 2);
 
                 return (
-                  <div
-                    key={j}
-                    className="flex justify-between items-center p-3 bg-[#202020] hover:bg-[#2A2A2A] transition border-b border-[#1a1a1a] rounded-b-lg"
+                  <Link
+                    key={id} // ✅ unique key here
+                    href={{
+                      pathname: `/matches/${id}/${slug}`,
+                    }}
                   >
-                    {/* Left: Time */}
-                    <div className="flex flex-col items-center justify-center text-gray-400 text-sm w-16">
-                      <div className="flex items-start">
-                        <span className="text-2xl leading-none">
-                          {(hour % 12 || 12).toString().padStart(2, "0")}
-                        </span>
-                        <span className="ml-[1px] text-xs">{minute}</span>
+                    <div
+                      key={j}
+                      className="flex justify-between items-center p-3 bg-[#202020] hover:bg-[#2A2A2A] transition border-b border-[#1a1a1a] rounded-b-lg"
+                    >
+                      {/* Left: Logo */}
+                      <div className="flex items-center justify-center w-16">
+                        <img
+                          src="/valorantLogo.png"
+                          alt="Valorant Logo"
+                          className="w-6 h-6 object-contain"
+                        />
                       </div>
-                    </div>
 
-                    {/* Center: Teams */}
-                    <div className="flex-1 px-2">
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center space-x-1">
-                          <span className="text-sm font-medium">
-                            {item.team1}
-                          </span>
+                      {/* Center: Teams */}
+                      <div className="flex-1 px-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1">
+                            <span className="text-sm font-medium">
+                              {item.team1}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <div className="flex items-center space-x-1 text-gray-400">
+                            <span className="text-sm font-medium">
+                              {item.team2}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <div className="flex items-center space-x-1 text-gray-400">
-                          <span className="text-sm font-medium">
-                            {item.team2}
-                          </span>
+
+                      {/* Right: Tournament Info */}
+                      <div className="text-right w-40">
+                        <div className="text-sm font-semibold text-gray-200">
+                          {item.match_event}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {item.match_series}
+                        </div>
+                      </div>
+
+                      {/* Right-most Logo + Time */}
+                      <div className="flex items-center space-x-3 w-28 justify-end">
+                        {/* Logo column */}
+                        <div className="flex items-center justify-center w-10">
+                          <img
+                            src={logo}
+                            alt={tournament?.title || "Tournament Logo"}
+                            className="w-8 h-8"
+                          />
+                        </div>
+
+                        {/* Time column */}
+                        <div className="text-gray-300 text-sm font-medium w-12 text-right">
+                          {(hour % 12 || 12).toString().padStart(2, "0")}:
+                          {minute}
                         </div>
                       </div>
                     </div>
-
-                    {/* Right: Tournament Info */}
-                    <div className="text-right text-xs text-gray-400 w-40">
-                      <div>{item.match_event}</div>
-                      <div>{item.match_series}</div>
-                    </div>
-
-                    {/* Right-most Logo + Time */}
-                    <div className="flex flex-col items-center text-sm w-20">
-                      <img
-                        src="/valorant-logo.png"
-                        alt="Tournament Logo"
-                        className="w-8 h-8 mb-1"
-                      />
-                      <span className="text-gray-300">{`${(hour % 12 || 12)
-                        .toString()
-                        .padStart(2, "0")}:${minute}`}</span>
-                    </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

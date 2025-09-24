@@ -1,7 +1,13 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export function getMatchStartTime(unix_timestamp: string) {
-  const matchStartTime = dayjs(unix_timestamp);
+  // Parse as UTC, then convert to local timezone
+  const matchStartTime = dayjs.utc(unix_timestamp).tz(dayjs.tz.guess());
 
   const hour = matchStartTime.hour() % 12 || 12; // 12-hour format
   const minute = matchStartTime.minute().toString().padStart(2, "0"); // "00", "05", etc.

@@ -16,7 +16,11 @@ export default function StatsPage() {
   });
   return (
     <>
-      <FilterPanel filters={filters} setFilters={setFilters} />
+      <FilterPanel
+        filters={filters}
+        setFilters={setFilters}
+        onApply={() => console.log(filters)}
+      />
       <Stats filters={filters} />
     </>
   );

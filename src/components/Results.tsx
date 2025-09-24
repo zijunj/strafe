@@ -38,28 +38,144 @@ export default function Results({ pageView }: ResultsProps) {
     <>
       {pageView === "home" && (
         <section className="max-w-7xl mx-auto">
-          {resultData.slice(0, 4).map((item, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between px-4 py-2 hover:bg-[#2A2A2A] transition"
-            >
-              <div>
-                <div className="text-xs text-gray-400 mb-1">
-                  {item.tournament_name}
-                </div>
-                <div className="text-white font-semibold text-sm">
-                  {item.team1} vs {item.team2}
-                  <br />
-                  {item.score1} vs {item.score2}
+          {Object.entries(
+            resultData.slice(0, 10).reduce((acc, item) => {
+              const tourneyKey = item.tournament_name;
+              if (!acc[tourneyKey]) acc[tourneyKey] = [];
+              acc[tourneyKey].push(item);
+              return acc;
+            }, {} as Record<string, MatchResult[]>)
+          ).map(([tournament, matches], i) => (
+            <div key={i} className="mb-6">
+              {/* Tournament Header */}
+              <div className="flex items-center justify-between px-4 py-2 bg-[#202020] border-b border-[#1a1a1a]">
+                <div className="flex items-center space-x-2">
+                  <img
+                    src={matches[0].tournament_icon}
+                    alt="Tournament Icon"
+                    className="w-6 h-6"
+                  />
+                  <span className="text-sm font-semibold text-white">
+                    {tournament}
+                  </span>
                 </div>
               </div>
-              <div className="text-right text-gray-400 text-xs">
-                <div>{item.time_completed.replace("ago", "").trim()}</div>
-              </div>
+
+              {/* Group matches by date inside each tournament */}
+              {Object.entries(
+                matches.reduce((acc, item) => {
+                  const dateObj = parseTimeCompleted(item.time_completed);
+                  const dateKey = dateObj.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  });
+                  if (!acc[dateKey]) acc[dateKey] = [];
+                  acc[dateKey].push({ ...item, dateObj });
+                  return acc;
+                }, {} as Record<string, (MatchResult & { dateObj: Date })[]>)
+              ).map(([date, dayMatches], j) => (
+                <div key={j}>
+                  {/* Date Subheader */}
+                  <div className="px-4 py-1 bg-[#181818] text-xs text-gray-400 font-semibold border-b border-[#1a1a1a]">
+                    {date}
+                  </div>
+
+                  {dayMatches.map((item, k) => {
+                    const hour = item.dateObj.getHours();
+                    const minute = item.dateObj
+                      .getMinutes()
+                      .toString()
+                      .padStart(2, "0");
+
+                    const score1 = Number(item.score1);
+                    const score2 = Number(item.score2);
+                    const team1Won = score1 > score2;
+                    const team2Won = score2 > score1;
+
+                    return (
+                      <div
+                        key={k}
+                        className="flex items-center justify-between px-4 py-2 hover:bg-[#2A2A2A] transition border-b border-[#1a1a1a]"
+                      >
+                        {/* Left: Time */}
+                        <div className="w-12 text-gray-400 text-xs">
+                          {`${(hour % 12 || 12)
+                            .toString()
+                            .padStart(2, "0")}:${minute}`}
+                        </div>
+
+                        {/* Center: Teams + Scores */}
+                        <div className="flex-1 px-2">
+                          {/* Team 1 */}
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`text-sm ${
+                                team1Won
+                                  ? "font-bold text-white"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {item.team1}
+                            </span>
+                            <div className="flex items-center space-x-1">
+                              {team1Won && (
+                                <span className="text-green-400 text-[10px] font-bold">
+                                  WIN
+                                </span>
+                              )}
+                              <span
+                                className={`text-sm ${
+                                  team1Won
+                                    ? "font-bold text-white"
+                                    : "text-gray-400"
+                                }`}
+                              >
+                                {score1}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Team 2 */}
+                          <div className="flex items-center justify-between mt-1">
+                            <span
+                              className={`text-sm ${
+                                team2Won
+                                  ? "font-bold text-white"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {item.team2}
+                            </span>
+                            <div className="flex items-center space-x-1">
+                              {team2Won && (
+                                <span className="text-green-400 text-[10px] font-bold">
+                                  WIN
+                                </span>
+                              )}
+                              <span
+                                className={`text-sm ${
+                                  team2Won
+                                    ? "font-bold text-white"
+                                    : "text-gray-400"
+                                }`}
+                              >
+                                {score2}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           ))}
         </section>
       )}
+
       {pageView === "match" && (
         <section className="max-w-7xl mx-auto rounded-lg">
           {Object.entries(

@@ -44,7 +44,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sign Up
+  // Sign Up and insert new row in "users" table
   const signUpNewUser = async (
     email: string,
     password: string
@@ -57,6 +57,23 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error("Error signing up:", error);
       return { success: false, error: error.message };
+    }
+
+    const user = data.user;
+    if (user) {
+      // Insert a new row into "users" table
+      const { error: insertError } = await supabase.from("users").insert([
+        {
+          id: user.id, // 🔑 Use the auth user.id as the primary key
+          email: user.email,
+          created_at: new Date().toISOString(), // optional if your table has it
+          // add other default fields here
+        },
+      ]);
+
+      if (insertError) {
+        console.error("Failed to insert new user row:", insertError.message);
+      }
     }
 
     return { success: true, data };

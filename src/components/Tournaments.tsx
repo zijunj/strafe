@@ -256,6 +256,113 @@ export default function Tournaments({
           })()}
         </div>
       )}
+      {pageView === "news" && (
+        <div className="w-full max-w-sm bg-[#151515] rounded-lg p-4 border border-[#2a2a2a]">
+          <h2 className="text-lg font-bold text-white mb-4">TOURNAMENTS</h2>
+
+          {/* 🟢 Ongoing */}
+          <div className="mb-6">
+            <h3 className="text-sm uppercase text-gray-400 mb-3">ONGOING</h3>
+            <div className="space-y-3">
+              {tournamentData
+                ?.filter((t) => t.status === "ongoing")
+                .map((tournament, i) => (
+                  <a
+                    key={i}
+                    className="flex items-center justify-between p-2 rounded-md hover:bg-[#1f1f1f] transition group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={tournament.thumb || "/valorantLogo.png"}
+                        alt={tournament.title}
+                        className="w-10 h-10 object-contain rounded"
+                      />
+                      <div>
+                        <h4 className="text-sm font-semibold text-white group-hover:text-yellow-300">
+                          {tournament.title}
+                        </h4>
+                        <p className="text-xs text-gray-400">
+                          {tournament.region} • {tournament.dates}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-gray-500 text-lg group-hover:text-yellow-300">
+                      ›
+                    </span>
+                  </a>
+                ))}
+            </div>
+          </div>
+
+          {/* 🟡 Upcoming */}
+          <div className="mb-6">
+            <h3 className="text-sm uppercase text-gray-400 mb-3">UPCOMING</h3>
+            <div className="space-y-3">
+              {tournamentData
+                ?.filter((t) => t.status === "upcoming")
+                .map((tournament, i) => (
+                  <a
+                    key={i}
+                    className="flex items-center justify-between p-2 rounded-md hover:bg-[#1f1f1f] transition group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={tournament.thumb || "/valorantLogo.png"}
+                        alt={tournament.title}
+                        className="w-10 h-10 object-contain rounded"
+                      />
+                      <div>
+                        <h4 className="text-sm font-semibold text-white group-hover:text-yellow-300">
+                          {tournament.title}
+                        </h4>
+                        <p className="text-xs text-gray-400">
+                          {tournament.region} • {tournament.dates}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-gray-500 text-lg group-hover:text-yellow-300">
+                      ›
+                    </span>
+                  </a>
+                ))}
+            </div>
+          </div>
+
+          {/* 🔴 Finished */}
+          <div>
+            <h3 className="text-sm uppercase text-gray-400 mb-3">FINISHED</h3>
+            <div className="space-y-3">
+              {tournamentData
+                ?.filter((t) => t.status === "finished")
+                .map((tournament, i) => (
+                  <a
+                    key={i}
+                    className="flex items-center justify-between p-2 rounded-md hover:bg-[#1f1f1f] transition group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={tournament.thumb || "/valorantLogo.png"}
+                        alt={tournament.title}
+                        className="w-10 h-10 object-contain rounded"
+                      />
+                      <div>
+                        <h4 className="text-sm font-semibold text-white group-hover:text-yellow-300">
+                          {tournament.title}
+                        </h4>
+                        <p className="text-xs text-gray-400">
+                          {tournament.region} • {tournament.dates}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-gray-500 text-lg group-hover:text-yellow-300">
+                      ›
+                    </span>
+                  </a>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

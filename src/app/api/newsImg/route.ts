@@ -7,17 +7,29 @@ export async function GET() {
     const res = await axios.get("https://www.vlr.gg/");
     const $ = cheerio.load(res.data);
 
-    const articles = $(".wf-card.news-feature").map((_, el) => {
-      const imgSrc = $(el).find("img").attr("src");
+    const articles = $(".wf-card.news-feature")
+      .map((_, el) => {
+        const relativeUrl = $(el).attr("href");
+        const imgSrc = $(el).find("img").attr("src");
+        const title = $(el)
+          .find(".news-feature-caption .wf-spoiler-visible")
+          .text()
+          .trim();
 
-      return {
-        img: imgSrc ? `https:${imgSrc}` : null,
-      };
-    }).get();
+        return {
+          url: relativeUrl ? `https://www.vlr.gg${relativeUrl}` : null,
+          img: imgSrc ? (imgSrc.startsWith("//") ? `https:${imgSrc}` : imgSrc) : null,
+          title: title || null,
+        };
+      })
+      .get();
 
     return NextResponse.json({ articles });
   } catch (err) {
     console.error("Scrape error:", err);
-    return NextResponse.json({ error: "Failed to scrape news" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to scrape news" },
+      { status: 500 }
+    );
   }
 }

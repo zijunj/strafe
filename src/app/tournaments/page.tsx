@@ -10,14 +10,14 @@ export default function TournamentPage() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto flex items-center mb-6">
+      <div className="max-w-7xl mx-auto flex items-center gap-4 mb-6">
         <img src="/valorantLogo.png" alt="Valorant Logo" className="h-[48px]" />
         <div>
-          <h1 className="text-3xl font-extrabold text-white">
+          <h1 className="text-3xl font-extrabold text-white leading-tight">
             Valorant Tournaments
           </h1>
-          <p className="text-gray-300">
-            Schedule for ongoing and upcoming Valorant esports tournaments.
+          <p className="text-sm text-gray-400">
+            Schedule up for upcoming and ongoing tournaments.
           </p>
         </div>
       </div>

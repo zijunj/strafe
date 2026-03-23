@@ -32,7 +32,7 @@ export default async function MatchDetailPage(props: {
 
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_BASE_URL}/api/matches/${id}/${slug}`,
-    { cache: "no-store" }
+    { cache: "no-store" },
   );
 
   const { data: match }: { data: MatchDetails } = await res.json();

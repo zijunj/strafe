@@ -11,7 +11,6 @@ export function getMatchStartTime(unix_timestamp: string) {
 
   const hour = matchStartTime.hour() % 12 || 12; // 12-hour format
   const minute = matchStartTime.minute().toString().padStart(2, "0"); // "00", "05", etc.
-  const ampm = matchStartTime.format("A"); // "AM" or "PM"
 
   return { hour, minute };
 }

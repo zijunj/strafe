@@ -24,10 +24,10 @@ export default function Modal({ children, handleCloseModal }: ModalProps) {
       {/* Underlay */}
       <div
         onClick={handleCloseModal}
-        className="absolute inset-0 bg-black/80 z-40"
+        className="absolute inset-0 bg-black/50 z-40"
       />
       {/* Modal Content */}
-      <div className="relative z-50 w-full max-w-md min-h-[500px] bg-[#242424] border border-[#303030] rounded-xl shadow-2xl p-6 flex flex-col gap-6">
+      <div className="relative z-50 w-full max-w-md min-h-[500px] bg-[#181818] border border-[#303030] rounded-xl shadow-2xl p-6 flex flex-col gap-6">
         {children}
       </div>
     </div>,

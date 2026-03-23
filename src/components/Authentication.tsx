@@ -70,14 +70,11 @@ export default function Authentication({
       )}
 
       <div className="flex justify-center mb-4">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="currentColor"
-          className="h-8 w-8 text-white"
-          viewBox="0 0 24 24"
-        >
-          {/* SVG Paths */}
-        </svg>
+        <img
+          src="/strafeLogo.png"
+          alt="Strafe Esports Logo"
+          className="h-12 w-auto object-contain"
+        />
       </div>
 
       <h2 className="text-xl font-bold text-white mb-2">
@@ -87,6 +84,16 @@ export default function Authentication({
         Join millions of esports fans and stay up to date with the latest news,
         results, and discussions.
       </p>
+
+      {/* Sign up button (when not logged in) */}
+      {!isRegistration && (
+        <button
+          onClick={() => setIsRegistration(true)}
+          className="w-full bg-[#e4ef43] text-black font-semibold py-3 rounded mb-6 hover:brightness-110 transition"
+        >
+          SIGN UP
+        </button>
+      )}
 
       {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
 
@@ -127,13 +134,10 @@ export default function Authentication({
       <button
         onClick={handleAuthenticate}
         disabled={isAuthenticating}
-        className={`w-full ${
-          isRegistration
-            ? "bg-[#1c1c1c] text-gray-500 border border-gray-600"
-            : "bg-[#e4ef43] text-black"
-        } font-semibold py-2 rounded mb-4`}
+        className={`w-full "bg-[#1c1c1c] text-gray-500 border border-gray-600"
+        font-semibold py-2 rounded mb-4`}
       >
-        {isRegistration ? "SIGN UP" : "CONTINUE"}
+        {isRegistration ? "SIGN UP" : "Log in"}
       </button>
 
       <div className="flex items-center gap-4 mb-4">
@@ -150,20 +154,6 @@ export default function Authentication({
         <button className="flex-1 flex items-center justify-center bg-[#1877f2] text-white font-semibold py-2 rounded">
           <img src="/facebook-icon.svg" className="h-5 w-5 mr-2" />
           Continue with Facebook
-        </button>
-      </div>
-
-      <div className="mt-6 text-sm text-gray-400">
-        <span>
-          {isRegistration
-            ? "Already have an account? "
-            : "Don't have an account? "}
-        </span>
-        <button
-          onClick={() => setIsRegistration(!isRegistration)}
-          className="text-white font-semibold hover:underline"
-        >
-          {isRegistration ? "Sign in" : "Sign up"}
         </button>
       </div>
     </div>

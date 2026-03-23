@@ -3,7 +3,7 @@ import MatchesPageClient from "./MatchesPagesClient";
 
 export default function MatchPage() {
   return (
-    <Suspense fallback={<div className="text-white">Loading matches...</div>}>
+    <Suspense fallback={<div className="text-white">Loading matches....</div>}>
       <MatchesPageClient />
     </Suspense>
   );

@@ -47,7 +47,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   // Sign Up and insert new row in "users" table
   const signUpNewUser = async (
     email: string,
-    password: string
+    password: string,
   ): Promise<AuthResult> => {
     const { data, error } = await supabase.auth.signUp({
       email: email.toLowerCase(),
@@ -82,7 +82,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   // Sign In
   const signInUser = async (
     email: string,
-    password: string
+    password: string,
   ): Promise<AuthResult> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -141,7 +141,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
           setGlobalUser(null);
           setGlobalData(null);
         }
-      }
+      },
     );
 
     loadSession();

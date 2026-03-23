@@ -46,30 +46,30 @@ export default async function MatchDetailPage(props: {
           <div className="flex justify-between items-center bg-[#1a1a1a] p-6 rounded-lg">
             <div className="flex items-center space-x-3">
               <img
-                src={match.team1_logo}
-                alt={match.team1}
+                src={match?.team1_logo || "/valorantLogo.png"}
+                alt={match?.team1 || "Team"}
                 className="w-12 h-12"
               />
               <div>
-                <h2 className="text-xl font-bold">{match.team1}</h2>
+                <h2 className="text-xl font-bold">{match?.team1}</h2>
                 <p className="text-gray-500 text-sm">Rank #47</p>
               </div>
             </div>
 
             <div className="text-center">
-              <p className="text-sm text-gray-400">{match.match_series}</p>
-              <p className="text-lg font-semibold">{match.local_time}</p>
-              <p className="text-xs text-gray-500">{match.time_until_match}</p>
+              <p className="text-sm text-gray-400">{match?.match_series}</p>
+              <p className="text-lg font-semibold">{match?.local_time}</p>
+              <p className="text-xs text-gray-500">{match?.time_until_match}</p>
             </div>
 
             <div className="flex items-center space-x-3">
               <div className="text-right">
-                <h2 className="text-xl font-bold">{match.team2}</h2>
+                <h2 className="text-xl font-bold">{match?.team2}</h2>
                 <p className="text-gray-500 text-sm">Rank #67</p>
               </div>
               <img
-                src={match.team2_logo}
-                alt={match.team2}
+                src={match?.team2_logo || "/valorantLogo.png"}
+                alt={match?.team2 || "Team"}
                 className="w-12 h-12"
               />
             </div>
@@ -79,18 +79,21 @@ export default async function MatchDetailPage(props: {
           <div className="bg-[#202020] p-4 rounded-lg">
             <h3 className="font-semibold mb-4">Previous Encounters</h3>
 
-            {match.head_to_head && match.head_to_head.length > 0 ? (
+            {match?.head_to_head && match?.head_to_head.length > 0 ? (
               <div>
                 {/* Summary */}
                 <div className="flex justify-between items-center mb-4 text-lg font-bold">
                   <div className="flex items-center gap-2">
                     <img
-                      src={match.team1_logo}
-                      alt={match.team1}
+                      src={match?.team1_logo || "/valorantLogo.png"}
+                      alt={match?.team1 || "Team"}
                       className="w-6 h-6"
                     />
                     <span className="text-white">
-                      {match.head_to_head.filter((h2h) => h2h.team1_win).length}{" "}
+                      {
+                        match?.head_to_head?.filter((h2h) => h2h.team1_win)
+                          .length
+                      }{" "}
                       Wins
                     </span>
                   </div>
@@ -99,12 +102,15 @@ export default async function MatchDetailPage(props: {
 
                   <div className="flex items-center gap-2">
                     <span className="text-white">
-                      {match.head_to_head.filter((h2h) => h2h.team2_win).length}{" "}
+                      {
+                        match?.head_to_head?.filter((h2h) => h2h.team2_win)
+                          .length
+                      }{" "}
                       Wins
                     </span>
                     <img
-                      src={match.team2_logo}
-                      alt={match.team2}
+                      src={match?.team2_logo || "/valorantLogo.png"}
+                      alt={match?.team2 || "Team"}
                       className="w-6 h-6"
                     />
                   </div>
@@ -112,7 +118,7 @@ export default async function MatchDetailPage(props: {
 
                 {/* Matches list */}
                 <div className="divide-y divide-gray-700">
-                  {match.head_to_head.map((h2h, idx) => (
+                  {match?.head_to_head?.map((h2h, idx) => (
                     <a
                       key={idx}
                       href={h2h.url}
@@ -183,10 +189,10 @@ export default async function MatchDetailPage(props: {
           <div className="bg-[#202020] p-4 rounded-lg">
             <h3 className="font-semibold mb-3">Match Preview</h3>
             <p className="text-gray-300 text-sm leading-relaxed">
-              {match.team1} vs {match.team2} will be played on{" "}
-              <span className="font-bold">{match.local_time}</span>. This is a{" "}
-              <span className="font-bold">{match.match_series}</span> match in
-              the <span className="font-bold">{match.match_event}</span>. Stay
+              {match?.team1} vs {match?.team2} will be played on{" "}
+              <span className="font-bold">{match?.local_time}</span>. This is a{" "}
+              <span className="font-bold">{match?.match_series}</span> match in
+              the <span className="font-bold">{match?.match_event}</span>. Stay
               tuned for live updates and results.
             </p>
           </div>

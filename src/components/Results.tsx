@@ -46,19 +46,17 @@ export default function Results({ pageView }: ResultsProps) {
               return acc;
             }, {} as Record<string, MatchResult[]>)
           ).map(([tournament, matches], i) => (
-            <div key={i} className="mb-6">
+            <div key={i}>
               {/* Tournament Header */}
-              <div className="flex items-center justify-between px-4 py-2 bg-[#202020] border-b border-[#1a1a1a]">
-                <div className="flex items-center space-x-2">
-                  <img
-                    src={matches[0].tournament_icon}
-                    alt="Tournament Icon"
-                    className="w-6 h-6"
-                  />
-                  <span className="text-sm font-semibold text-white">
-                    {tournament}
-                  </span>
-                </div>
+              <div className="flex items-center px-3 py-2 bg-[#252525] border-b border-[#2e2e2e]">
+                <img
+                  src={matches[0].tournament_icon}
+                  alt=""
+                  className="w-4 h-4 mr-2 opacity-70"
+                />
+                <span className="text-xs font-bold text-white truncate">
+                  {tournament}
+                </span>
               </div>
 
               {/* Group matches by date inside each tournament */}
@@ -78,7 +76,7 @@ export default function Results({ pageView }: ResultsProps) {
               ).map(([date, dayMatches], j) => (
                 <div key={j}>
                   {/* Date Subheader */}
-                  <div className="px-4 py-1 bg-[#181818] text-xs text-gray-400 font-semibold border-b border-[#1a1a1a]">
+                  <div className="px-3 py-1 bg-[#1a1a1a] text-[10px] text-gray-500 font-medium border-b border-[#2e2e2e]">
                     {date}
                   </div>
 
@@ -97,39 +95,44 @@ export default function Results({ pageView }: ResultsProps) {
                     return (
                       <div
                         key={k}
-                        className="flex items-center justify-between px-4 py-2 hover:bg-[#2A2A2A] transition border-b border-[#1a1a1a]"
+                        className="flex items-stretch border-b border-[#2e2e2e] hover:bg-[#252525] transition cursor-pointer"
                       >
-                        {/* Left: Time */}
-                        <div className="w-12 text-gray-400 text-xs">
-                          {`${(hour % 12 || 12)
-                            .toString()
-                            .padStart(2, "0")}:${minute}`}
+                        {/* Left: Time - Hour large, minutes small */}
+                        <div className="flex items-center justify-center w-16 border-r border-[#2e2e2e] text-gray-400">
+                          <div className="flex items-start">
+                            <span className="text-lg font-bold leading-none">
+                              {(hour % 12 || 12).toString().padStart(2, "0")}
+                            </span>
+                            <span className="text-[10px] font-bold ml-0.5">
+                              {minute}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Center: Teams + Scores */}
-                        <div className="flex-1 px-2">
+                        <div className="flex-1 py-2 px-3">
                           {/* Team 1 */}
                           <div className="flex items-center justify-between">
                             <span
-                              className={`text-sm ${
+                              className={`text-xs font-semibold ${
                                 team1Won
-                                  ? "font-bold text-white"
-                                  : "text-gray-400"
+                                  ? "text-white"
+                                  : "text-white"
                               }`}
                             >
                               {item.team1}
                             </span>
                             <div className="flex items-center space-x-1">
                               {team1Won && (
-                                <span className="text-green-400 text-[10px] font-bold">
+                                <span className="text-green-400 text-[9px] font-bold">
                                   WIN
                                 </span>
                               )}
                               <span
-                                className={`text-sm ${
+                                className={`text-xs font-bold ${
                                   team1Won
-                                    ? "font-bold text-white"
-                                    : "text-gray-400"
+                                    ? "text-white"
+                                    : "text-white"
                                 }`}
                               >
                                 {score1}
@@ -138,27 +141,27 @@ export default function Results({ pageView }: ResultsProps) {
                           </div>
 
                           {/* Team 2 */}
-                          <div className="flex items-center justify-between mt-1">
+                          <div className="flex items-center justify-between mt-0.5">
                             <span
-                              className={`text-sm ${
+                              className={`text-xs font-semibold ${
                                 team2Won
-                                  ? "font-bold text-white"
-                                  : "text-gray-400"
+                                  ? "text-white"
+                                  : "text-white"
                               }`}
                             >
                               {item.team2}
                             </span>
                             <div className="flex items-center space-x-1">
                               {team2Won && (
-                                <span className="text-green-400 text-[10px] font-bold">
+                                <span className="text-green-400 text-[9px] font-bold">
                                   WIN
                                 </span>
                               )}
                               <span
-                                className={`text-sm ${
+                                className={`text-xs font-bold ${
                                   team2Won
-                                    ? "font-bold text-white"
-                                    : "text-gray-400"
+                                    ? "text-white"
+                                    : "text-white"
                                 }`}
                               >
                                 {score2}

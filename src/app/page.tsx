@@ -4,6 +4,7 @@ import Matches from "@/components/Matches";
 import Tournaments from "@/components/Tournaments";
 import News from "@/components/News";
 import Results from "@/components/Results";
+import AboutValorant from "@/components/AboutValorant";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -39,40 +40,49 @@ export default function HomePage() {
             <Tournaments pageView="home" tournamentView="ongoing" />
           </div>
         </div>
+
+        {/* About Valorant Section */}
+        <AboutValorant />
       </div>
 
       {/* Right Column: Matches and Results */}
-      <div className="w-[320px] mt-[70px] space-y-6">
-        <div className="bg-[#1E1E1E] rounded-lg border border-[#3c3c3c] ring-1 ring-[#2E2E2E]">
-          <h2 className="text-sm font-bold text-white mb-2 px-4 pt-4 py-4">
-            UPCOMING VALORANT MATCHES
-          </h2>
+      <div className="w-[360px] mt-[70px] space-y-4">
+        {/* Upcoming Matches Card */}
+        <div className="bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#2e2e2e]">
+            <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
+              Upcoming Valorant Matches
+            </h2>
+          </div>
 
           {/* Matches List */}
           <Matches pageView="home" />
 
           {/* Footer Link */}
-          <div className="text-center">
+          <div className="text-center border-t border-[#2e2e2e]">
             <Link
               href="/matches"
-              className="block pb-3 text-[#FFE44F] text-xs font-bold tracking-wide hover:underline"
+              className="block py-2.5 text-[#FFE44F] text-xs font-semibold hover:underline"
             >
-              ALL UPCOMING MATCHES →
+              All upcoming matches →
             </Link>
           </div>
         </div>
 
-        <div className="bg-[#1E1E1E] rounded-lg border border-[#151515] ring-1 ring-stone-700">
-          <h2 className="text-m font-bold text-white mb-2 p-4">
-            LATEST VALORANT RESULTS
-          </h2>
+        {/* Latest Results Card */}
+        <div className="bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#2e2e2e]">
+            <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
+              Latest Valorant Results
+            </h2>
+          </div>
           <Results pageView="home" />
-          <div className="border-t border-[#2e2e2e] text-center">
+          <div className="text-center border-t border-[#2e2e2e]">
             <Link
               href="/matches?tab=finished"
-              className="block py-2 text-yellow-300 text-sm font-semibold hover:underline"
+              className="block py-2.5 text-[#FFE44F] text-xs font-semibold hover:underline"
             >
-              ALL MATCH RESULTS →
+              All match results →
             </Link>
           </div>
         </div>

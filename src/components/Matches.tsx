@@ -57,7 +57,7 @@ export default function Matches({ pageView }: MatchProps) {
                   new Date(a.unix_timestamp).getTime() -
                   new Date(b.unix_timestamp).getTime()
               )
-              .slice(0, 8) // take first 8 to allow multiple tournaments
+              .slice(0, 8)
               .reduce((acc, item) => {
                 const key = item.match_event || "Other Tournament";
                 if (!acc[key]) acc[key] = [];
@@ -65,10 +65,10 @@ export default function Matches({ pageView }: MatchProps) {
                 return acc;
               }, {} as Record<string, MatchItem[]>)
           ).map(([tournament, matches], i) => (
-            <div key={i} className="mb-4">
+            <div key={i}>
               {/* Tournament Header */}
-              <div className="flex items-center space-x-2 px-4 py-2 bg-[#202020] border-b border-[#1a1a1a]">
-                <span className="text-sm font-semibold text-white">
+              <div className="flex items-center px-3 py-2 bg-[#252525] border-b border-[#2e2e2e]">
+                <span className="text-xs font-bold text-white truncate">
                   {tournament}
                 </span>
               </div>
@@ -76,40 +76,34 @@ export default function Matches({ pageView }: MatchProps) {
               {/* Matches under this tournament */}
               {matches.map((item, j) => {
                 const { hour, minute } = getMatchStartTime(item.unix_timestamp);
+                const timeString = `${hour.toString().padStart(2, "0")}:${minute}`;
 
                 return (
                   <div
                     key={j}
-                    className="border-b border-[#3c3c3c] border-t border-[#3c3c3c] flex"
+                    className="flex items-stretch border-b border-[#2e2e2e] hover:bg-[#252525] transition cursor-pointer"
                   >
-                    {/* Left: Time column (shared across both rows) */}
-                    <div
-                      className="flex flex-col justify-center items-center text-gray-400 text-sm w-12"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #202020 50%, #181818 50%)",
-                      }}
-                    >
+                    {/* Left: Time - Hour large, minutes small */}
+                    <div className="flex items-center justify-center w-16 border-r border-[#2e2e2e] text-gray-400">
                       <div className="flex items-start">
-                        <span className="text-2xl leading-none">
+                        <span className="text-xl font-bold leading-none">
                           {hour.toString().padStart(2, "0")}
                         </span>
-                        <span className="ml-[1px] text-xs">{minute}</span>
+                        <span className="text-xs font-bold ml-0.5">
+                          {minute}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Right: Teams stacked */}
-                    <div className="flex-1">
-                      {/* Team 1 row (lighter) */}
-                      <div className="flex justify-between items-center p-3 bg-[#202020] hover:bg-[#2A2A2A] transition">
-                        <span className="text-sm font-medium text-white">
+                    {/* Center: Teams */}
+                    <div className="flex-1 py-2 px-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white font-semibold truncate pr-2">
                           {item.team1}
                         </span>
                       </div>
-
-                      {/* Team 2 row (darker) */}
-                      <div className="flex justify-between items-center p-3 bg-[#181818] hover:bg-[#2A2A2A] transition">
-                        <span className="text-sm font-medium text-gray-400">
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-white font-semibold truncate pr-2">
                           {item.team2}
                         </span>
                       </div>

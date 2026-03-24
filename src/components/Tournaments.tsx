@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import useValorantApiWithCache from "../app/api/Valorant";
 import { getMatchStartTime } from "../app/utils/apiFunctions";
 
@@ -171,16 +170,11 @@ export default function Tournaments({
         </div>
       )}
       {pageView === "tournament" && (
-        <div className="bg-[#111] rounded-2xl overflow-hidden">
-          {/* Header Row */}
-          <div className="flex items-center justify-between px-6 py-3 bg-[#181818] border-b border-[#2a2a2a] text-xs font-semibold text-gray-400 uppercase">
-            <div className="flex items-center gap-4 flex-1">
-              <span className="flex-1">
-                {tournamentView === "upcoming"
-                  ? "Upcoming Tournaments"
-                  : "Ongoing Tournaments"}
-              </span>
-            </div>
+        <div className="rounded-2xl overflow-hidden border border-[#383838] bg-[#171717] shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
+          <div className="px-6 py-5 bg-[#171717] border-b border-[#343434]">
+            <h2 className="text-[13px] font-extrabold tracking-[0.02em] text-white uppercase">
+              Current Valorant Esports Tournaments
+            </h2>
           </div>
 
           {/* Tournament Rows or Empty State */}
@@ -208,56 +202,69 @@ export default function Tournaments({
               );
             }
 
-            return filtered.map((tournament, i) => (
-              <article
-                key={i}
-                className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a2a] hover:bg-[#1a1a1a] transition"
-              >
-                {/* Left: Logo */}
-                <div className="w-12 h-12 bg-[#222] rounded flex items-center justify-center mr-4">
-                  <img
-                    src={tournament.thumb || "/valorantLogo.png"}
-                    alt="logo"
-                    className="w-6 h-6 object-contain"
-                  />
-                </div>
+            return (
+              <div className="overflow-x-auto">
+                <div className="min-w-[920px]">
+                  {filtered.map((tournament, i) => (
+                    <article
+                      key={i}
+                      className="grid grid-cols-[72px_minmax(0,1.9fr)_72px_126px_134px_150px] items-center min-h-[88px] border-b border-[#343434] bg-[#1d1d1d] hover:bg-[#212121] transition-colors"
+                    >
+                      <div className="flex h-full items-center justify-center border-r border-[#343434]">
+                        <img
+                          src="/valorantLogo.png"
+                          alt="Valorant logo"
+                          className="h-9 w-9 object-contain opacity-65 grayscale brightness-90 contrast-125"
+                        />
+                      </div>
 
-                {/* Middle: Tournament Info */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-white font-semibold text-sm">
-                      {tournament.title}
-                    </h2>
-                  </div>
-                </div>
+                      <div className="flex items-center gap-4 px-5">
+                        <div className="flex h-11 w-11 items-center justify-center bg-white/95">
+                          <img
+                            src={tournament.thumb || "/valorantLogo.png"}
+                            alt={tournament.title}
+                            className="h-9 w-9 object-contain"
+                          />
+                        </div>
+                        <div>
+                          <h3 className="text-[15px] font-extrabold leading-5 text-white">
+                            {tournament.title}
+                          </h3>
+                          <p className="mt-1 text-[14px] leading-5 text-[#737373]">
+                            Valorant
+                          </p>
+                        </div>
+                      </div>
 
-                {/* Region */}
-                <div className="text-xs text-gray-300 w-16 text-center">
-                  {tournament.region}
-                </div>
+                      <div className="border-l border-[#343434] px-4 text-center text-[13px] font-extrabold uppercase tracking-[0.06em] text-[#6d7680]">
+                        {tournament.region || "-"}
+                      </div>
 
-                {/* Prize */}
-                <div className="text-xs text-gray-300 w-28 text-right">
-                  {tournament.prize}
-                </div>
+                      <div className="border-l border-[#343434] px-4 text-center text-[13px] font-bold text-[#7b7b7b]">
+                        {tournament.prize || "-"}
+                      </div>
 
-                {/* Dates */}
-                <div className="text-xs text-gray-400 w-36 text-right">
-                  {tournament.dates}
-                </div>
+                      <div className="border-l border-[#343434] px-4 text-center text-[13px] font-bold text-[#7b7b7b]">
+                        {tournament.dates}
+                      </div>
 
-                {/* Teams (placeholders) */}
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-[#222] rounded-full" />
-                  <div className="w-6 h-6 bg-[#222] rounded-full" />
+                      <div className="border-l border-[#343434] px-5">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="h-9 w-9 rounded-full border border-[#2e2e2e] bg-[#151515]" />
+                          <div className="h-9 w-9 rounded-full border border-[#2e2e2e] bg-[#151515]" />
+                          <div className="h-9 w-9 rounded-full border border-[#2e2e2e] bg-[#151515]" />
+                        </div>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-              </article>
-            ));
+              </div>
+            );
           })()}
         </div>
       )}
       {pageView === "news" && (
-        <div className="w-full max-w-sm bg-[#151515] rounded-lg p-4 border border-[#2a2a2a]">
+        <div className="w-full max-w-sm bg-[#1E1E1E] rounded-lg p-4 border border-[#2a2a2a] ring-1 ring-[#2E2E2E]">
           <h2 className="text-lg font-bold text-white mb-4">TOURNAMENTS</h2>
 
           {/* 🟢 Ongoing */}
@@ -266,6 +273,7 @@ export default function Tournaments({
             <div className="space-y-3">
               {tournamentData
                 ?.filter((t) => t.status === "ongoing")
+                .slice(0, 4)
                 .map((tournament, i) => (
                   <a
                     key={i}
@@ -300,6 +308,7 @@ export default function Tournaments({
             <div className="space-y-3">
               {tournamentData
                 ?.filter((t) => t.status === "upcoming")
+                .slice(0, 4)
                 .map((tournament, i) => (
                   <a
                     key={i}
@@ -334,6 +343,7 @@ export default function Tournaments({
             <div className="space-y-3">
               {tournamentData
                 ?.filter((t) => t.status === "finished")
+                .slice(0, 4)
                 .map((tournament, i) => (
                   <a
                     key={i}

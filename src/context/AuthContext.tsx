@@ -8,16 +8,15 @@ import {
   ReactNode,
 } from "react";
 import { supabase } from "../app/supabaseClient";
-import { Session, User } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 
-// Define your user data type from your "users" table
 type GlobalData = {
   id: string;
-  // Add other fields from your Supabase `users` table here
+  username?: string;
+  email?: string;
   [key: string]: any;
 };
 
-// Define context value type
 interface AuthContextType {
   globalUser: User | null;
   globalData: GlobalData | null;
@@ -28,23 +27,29 @@ interface AuthContextType {
   signOutUser: () => Promise<void>;
 }
 
-// Define the return type for auth functions
 interface AuthResult {
   success: boolean;
   data?: any;
   error?: string;
 }
 
-// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Context Provider
+const buildFallbackProfile = (user: User): GlobalData => ({
+  id: user.id,
+  email: user.email,
+  username:
+    typeof user.user_metadata?.username === "string" &&
+    user.user_metadata.username.trim()
+      ? user.user_metadata.username.trim()
+      : user.email?.split("@")[0] || "User",
+});
+
 export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   const [globalUser, setGlobalUser] = useState<User | null>(null);
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sign Up and insert new row in "users" table
   const signUpNewUser = async (
     email: string,
     password: string,
@@ -59,27 +64,9 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: error.message };
     }
 
-    const user = data.user;
-    if (user) {
-      // Insert a new row into "users" table
-      const { error: insertError } = await supabase.from("users").insert([
-        {
-          id: user.id, // 🔑 Use the auth user.id as the primary key
-          email: user.email,
-          created_at: new Date().toISOString(), // optional if your table has it
-          // add other default fields here
-        },
-      ]);
-
-      if (insertError) {
-        console.error("Failed to insert new user row:", insertError.message);
-      }
-    }
-
     return { success: true, data };
   };
 
-  // Sign In
   const signInUser = async (
     email: string,
     password: string,
@@ -105,7 +92,6 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Sign Out
   const signOutUser = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -116,7 +102,6 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Load user session + user data
   useEffect(() => {
     const loadSession = async () => {
       const {
@@ -125,7 +110,8 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
 
       if (session?.user) {
         setGlobalUser(session.user);
-        fetchUserData(session.user.id);
+        setGlobalData(buildFallbackProfile(session.user));
+        fetchUserData(session.user);
       } else {
         setGlobalUser(null);
         setGlobalData(null);
@@ -136,7 +122,8 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
       (_event, session) => {
         if (session?.user) {
           setGlobalUser(session.user);
-          fetchUserData(session.user.id);
+          setGlobalData(buildFallbackProfile(session.user));
+          fetchUserData(session.user);
         } else {
           setGlobalUser(null);
           setGlobalData(null);
@@ -151,20 +138,21 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Fetch user info from "users" table
-  const fetchUserData = async (userId: string) => {
+  const fetchUserData = async (user: User) => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from("users")
       .select("*")
-      .eq("id", userId)
-      .single();
+      .eq("id", user.id)
+      .maybeSingle();
 
     if (error) {
       console.error("Failed to fetch user data:", error.message);
-      setGlobalData(null);
+      setGlobalData(buildFallbackProfile(user));
+    } else if (data) {
+      setGlobalData({ ...buildFallbackProfile(user), ...data });
     } else {
-      setGlobalData(data);
+      setGlobalData(buildFallbackProfile(user));
     }
 
     setIsLoading(false);
@@ -187,7 +175,6 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Hook for easier access
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {

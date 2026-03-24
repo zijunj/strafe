@@ -23,25 +23,52 @@ export default function FilterPanel({
 }: FilterPanelProps) {
   // stage *all* filters locally
   const [stagedFilters, setStagedFilters] = useState(filters);
+  const inputClasses =
+    "w-full rounded-lg border border-[#353535] bg-[#171717] px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-[#FFE44F]";
+  const labelClasses =
+    "text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#8b8b8b]";
 
   return (
-    <div className="bg-gray-800 text-white p-6 rounded-md shadow-md max-w-6xl mx-auto">
-      {/* Labels */}
-      <div className="grid grid-cols-6 gap-4 mb-4 text-xs text-pink-400 font-semibold">
-        <label htmlFor="eventSeries">EVENT SERIES</label>
-        <label htmlFor="region">REGION</label>
-        <label htmlFor="minRounds">MIN # RNDS</label>
-        <label htmlFor="minRating">MIN OPP RATING</label>
-        <label htmlFor="agent">AGENT</label>
-        <label htmlFor="map">MAP</label>
+    <div className="max-w-7xl mx-auto rounded-2xl border border-[#303030] bg-[#1b1b1b] p-6 text-white shadow-[0_18px_60px_rgba(0,0,0,0.25)]">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#FFE44F]">
+            Filter Panel
+          </p>
+          <h2 className="mt-2 text-xl font-extrabold text-white">
+            Narrow down the player pool
+          </h2>
+        </div>
       </div>
 
-      {/* Inputs */}
-      <div className="grid grid-cols-6 gap-4 mb-4">
-        {/* eventSeries */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-7">
+        <label htmlFor="eventSeries" className={labelClasses}>
+          Event Series
+        </label>
+        <label htmlFor="region" className={labelClasses}>
+          Region
+        </label>
+        <label htmlFor="minRounds" className={labelClasses}>
+          Min # Rnds
+        </label>
+        <label htmlFor="minRating" className={labelClasses}>
+          Min Opp Rating
+        </label>
+        <label htmlFor="agent" className={labelClasses}>
+          Agent
+        </label>
+        <label htmlFor="map" className={labelClasses}>
+          Map
+        </label>
+        <label htmlFor="timespan" className={labelClasses}>
+          Timespan
+        </label>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-7">
         <select
           id="eventSeries"
-          className="bg-gray-700 p-2 rounded"
+          className={inputClasses}
           value={stagedFilters.eventSeries}
           onChange={(e) =>
             setStagedFilters((prev) => ({
@@ -53,10 +80,9 @@ export default function FilterPanel({
           <option value="all">All</option>
         </select>
 
-        {/* region */}
         <select
           id="region"
-          className="bg-gray-700 p-2 rounded"
+          className={inputClasses}
           value={stagedFilters.region}
           onChange={(e) =>
             setStagedFilters((prev) => ({ ...prev, region: e.target.value }))
@@ -78,11 +104,10 @@ export default function FilterPanel({
           <option value="cg">Collegiate</option>
         </select>
 
-        {/* minRounds */}
         <input
           type="number"
           id="minRounds"
-          className="bg-gray-700 p-2 rounded"
+          className={inputClasses}
           value={stagedFilters.minRounds}
           onChange={(e) =>
             setStagedFilters((prev) => ({
@@ -92,11 +117,10 @@ export default function FilterPanel({
           }
         />
 
-        {/* minRating */}
         <input
           type="number"
           id="minRating"
-          className="bg-gray-700 p-2 rounded"
+          className={inputClasses}
           value={stagedFilters.minRating}
           onChange={(e) =>
             setStagedFilters((prev) => ({
@@ -106,10 +130,9 @@ export default function FilterPanel({
           }
         />
 
-        {/* agent */}
         <select
           id="agent"
-          className="bg-gray-700 p-2 rounded"
+          className={inputClasses}
           value={stagedFilters.agent}
           onChange={(e) =>
             setStagedFilters((prev) => ({ ...prev, agent: e.target.value }))
@@ -141,10 +164,9 @@ export default function FilterPanel({
           <option value="vyse">Vyse</option>
         </select>
 
-        {/* map */}
         <select
           id="map"
-          className="bg-gray-700 p-2 rounded"
+          className={inputClasses}
           value={stagedFilters.map}
           onChange={(e) =>
             setStagedFilters((prev) => ({ ...prev, map: e.target.value }))
@@ -152,20 +174,16 @@ export default function FilterPanel({
         >
           <option value="all">All</option>
         </select>
-      </div>
 
-      {/* Timespan row */}
-      <div className="grid grid-cols-6 gap-4 text-xs text-pink-400 font-semibold mb-2">
-        <label htmlFor="timespan">TIMESPAN</label>
-      </div>
-
-      <div className="grid grid-cols-6 gap-4">
         <select
           id="timespan"
-          className="bg-gray-700 p-2 rounded col-span-2"
+          className={inputClasses}
           value={stagedFilters.timespan}
           onChange={(e) =>
-            setStagedFilters((prev) => ({ ...prev, timespan: e.target.value }))
+            setStagedFilters((prev) => ({
+              ...prev,
+              timespan: e.target.value,
+            }))
           }
         >
           <option value="30">Past 30 days</option>
@@ -173,17 +191,18 @@ export default function FilterPanel({
           <option value="90">Past 90 days</option>
           <option value="all">All Time</option>
         </select>
+      </div>
 
-        {/* Apply button */}
+      <div className="mt-6">
         <button
-          className="col-span-1 bg-red-500 text-white font-bold p-2 rounded hover:bg-red-600"
+          className="h-[48px] w-full rounded-lg bg-[#FFE44F] px-6 text-sm font-extrabold uppercase tracking-[0.08em] text-black transition-opacity hover:opacity-90"
           onClick={() => {
-            setFilters(stagedFilters); // push all staged values
+            setFilters(stagedFilters);
             onApply(
               stagedFilters.region,
               stagedFilters.timespan,
               stagedFilters.minRating
-            ); // pass 3 for API fetch
+            );
           }}
         >
           Apply Filter

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import useValorantApiWithCache from "../app/api/Valorant";
 
 interface PlayerStats {
@@ -30,7 +31,29 @@ interface StatsProps {
   };
 }
 
+const columns = [
+  { key: "player", label: "Player" },
+  { key: "agents", label: "Agents" },
+  { key: "rounds_played", label: "Rounds" },
+  { key: "rating", label: "Rating" },
+  { key: "average_combat_score", label: "ACS" },
+  { key: "kill_deaths", label: "K/D" },
+  { key: "kill_assists_survived_traded", label: "KAST" },
+  { key: "average_damage_per_round", label: "ADR" },
+  { key: "kills_per_round", label: "KPR" },
+  { key: "assists_per_round", label: "APR" },
+  { key: "first_kills_per_round", label: "FKPR" },
+  { key: "first_deaths_per_round", label: "FDPR" },
+  { key: "headshot_percentage", label: "HS%" },
+  { key: "clutch_success_percentage", label: "CL%" },
+] as const;
+
+type ColumnKey = (typeof columns)[number]["key"];
+
 export default function Stats({ filters }: StatsProps) {
+  const [highlightedColumn, setHighlightedColumn] =
+    useState<ColumnKey>("rating");
+
   const cacheKey = `stats-${filters.region}-${filters.timespan}-${filters.minRating}`;
   const { data: statsData = [], loading } = useValorantApiWithCache<
     PlayerStats[]
@@ -68,63 +91,103 @@ export default function Stats({ filters }: StatsProps) {
     return true;
   });
 
+  const getCellClasses = (column: ColumnKey) =>
+    highlightedColumn === column
+      ? "px-3 py-4 text-center font-bold text-[#FFE44F]"
+      : "px-3 py-4 text-center text-[#d6d6d6]";
+
   return (
     <section className="max-w-7xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-bold text-white mb-6">Top Player Stats</h1>
+      <div className="mb-6">
+        <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#FFE44F]">
+          Stats Overview
+        </p>
+        <h1 className="mt-2 text-2xl font-extrabold text-white">
+          Top Player Stats
+        </h1>
+      </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-[#303030] bg-[#1b1b1b] shadow-[0_18px_60px_rgba(0,0,0,0.25)]">
         <table className="min-w-full border-collapse">
           <thead>
-            <tr className="bg-gray-900 text-gray-300 text-sm">
-              <th className="p-2 text-left">Player</th>
-              <th className="p-2">Agents</th>
-              <th className="p-2">Rounds</th>
-              <th className="p-2">Rating</th>
-              <th className="p-2">ACS</th>
-              <th className="p-2">K/D</th>
-              <th className="p-2">KAST</th>
-              <th className="p-2">ADR</th>
-              <th className="p-2">KPR</th>
-              <th className="p-2">APR</th>
-              <th className="p-2">FKPR</th>
-              <th className="p-2">FDPR</th>
-              <th className="p-2">HS%</th>
-              <th className="p-2">CL%</th>
+            <tr className="bg-[#171717] text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#8b8b8b]">
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  className={
+                    column.key === "player"
+                      ? "px-4 py-4 text-left"
+                      : "px-3 py-4 text-center"
+                  }
+                >
+                  <button
+                    type="button"
+                    onClick={() => setHighlightedColumn(column.key)}
+                    className={`w-full transition-colors hover:text-white ${
+                      column.key === "player" ? "text-left" : "text-center"
+                    } ${
+                      highlightedColumn === column.key ? "text-[#FFE44F]" : ""
+                    }`}
+                  >
+                    {column.label}
+                  </button>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {filteredData.slice(0, 25).map((item, i) => (
               <tr
                 key={i}
-                className={i % 2 === 0 ? "bg-gray-800" : "bg-gray-700"}
+                className={`border-t border-[#2d2d2d] text-sm transition-colors hover:bg-[#242424] ${
+                  i % 2 === 0 ? "bg-[#1d1d1d]" : "bg-[#212121]"
+                }`}
               >
-                <td className="p-2 font-medium text-white">
+                <td
+                  className={`px-4 py-4 font-semibold ${
+                    highlightedColumn === "player"
+                      ? "text-[#FFE44F]"
+                      : "text-white"
+                  }`}
+                >
                   {item.player}{" "}
-                  <span className="text-xs text-gray-400">({item.org})</span>
+                  <span className="text-xs text-[#8b8b8b]">({item.org})</span>
                 </td>
-                <td className="p-2 text-center">
+                <td className={getCellClasses("agents")}>
                   {item.agents?.join(", ") || "-"}
                 </td>
-                <td className="p-2 text-center">{item.rounds_played}</td>
-                <td className="p-2 text-center">{item.rating}</td>
-                <td className="p-2 text-center">{item.average_combat_score}</td>
-                <td className="p-2 text-center">{item.kill_deaths}</td>
-                <td className="p-2 text-center">
+                <td className={getCellClasses("rounds_played")}>
+                  {item.rounds_played}
+                </td>
+                <td className={getCellClasses("rating")}>{item.rating}</td>
+                <td className={getCellClasses("average_combat_score")}>
+                  {item.average_combat_score}
+                </td>
+                <td className={getCellClasses("kill_deaths")}>
+                  {item.kill_deaths}
+                </td>
+                <td className={getCellClasses("kill_assists_survived_traded")}>
                   {item.kill_assists_survived_traded}
                 </td>
-                <td className="p-2 text-center">
+                <td className={getCellClasses("average_damage_per_round")}>
                   {item.average_damage_per_round}
                 </td>
-                <td className="p-2 text-center">{item.kills_per_round}</td>
-                <td className="p-2 text-center">{item.assists_per_round}</td>
-                <td className="p-2 text-center">
+                <td className={getCellClasses("kills_per_round")}>
+                  {item.kills_per_round}
+                </td>
+                <td className={getCellClasses("assists_per_round")}>
+                  {item.assists_per_round}
+                </td>
+                <td className={getCellClasses("first_kills_per_round")}>
                   {item.first_kills_per_round}
                 </td>
-                <td className="p-2 text-center">
+                <td className={getCellClasses("first_deaths_per_round")}>
                   {item.first_deaths_per_round}
                 </td>
-                <td className="p-2 text-center">{item.headshot_percentage}</td>
-                <td className="p-2 text-center">
+                <td className={getCellClasses("headshot_percentage")}>
+                  {item.headshot_percentage}
+                </td>
+                <td className={getCellClasses("clutch_success_percentage")}>
                   {item.clutch_success_percentage}
                 </td>
               </tr>

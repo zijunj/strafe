@@ -36,7 +36,7 @@ export default function NewsPage() {
           <Tournaments pageView="news" tournamentView="ongoing" />
 
           {/* 🔥 Upcoming Matches section */}
-          <div className="bg-[#1E1E1E] rounded-lg border border-[#3c3c3c] ring-1 ring-[#2E2E2E]">
+          <div className="bg-[#1E1E1E] rounded-lg border border-[#2a2a2a] ring-1 ring-[#2E2E2E]">
             <h2 className="text-sm font-bold text-white mb-2 px-4 pt-4">
               UPCOMING MATCHES
             </h2>

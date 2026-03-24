@@ -147,13 +147,17 @@ export default function Authentication({
       </div>
 
       <div className="flex gap-2">
-        <button className="flex-1 flex items-center justify-center bg-white text-black font-semibold py-2 rounded">
-          <img src="/google-icon.svg" className="h-5 w-5 mr-2" />
-          Continue with Google
+        <button className="flex-1 bg-white text-black font-semibold py-1.5 rounded">
+          <span className="mx-auto flex w-fit items-center justify-center gap-2 whitespace-nowrap text-sm leading-none">
+            <img src="/google-icon.svg" alt="Google" className="h-5 w-5" />
+            <span>Continue with Google</span>
+          </span>
         </button>
-        <button className="flex-1 flex items-center justify-center bg-[#1877f2] text-white font-semibold py-2 rounded">
-          <img src="/facebook-icon.svg" className="h-5 w-5 mr-2" />
-          Continue with Facebook
+        <button className="flex-1 bg-[#1877f2] text-white font-semibold py-1.5 rounded">
+          <span className="mx-auto flex w-fit items-center justify-center gap-1.5 whitespace-nowrap text-sm leading-none">
+            <img src="/facebook-icon.svg" alt="Facebook" className="h-5 w-5" />
+            <span>Continue with Facebook</span>
+          </span>
         </button>
       </div>
     </div>

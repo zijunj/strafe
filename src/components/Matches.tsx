@@ -200,11 +200,11 @@ export default function Matches({ pageView }: MatchProps) {
                       {/* Teams */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white truncate">
+                          <span className="text-[15px] font-semibold text-white truncate">
                             {item.team1}
                           </span>
-                          <span className="text-xs text-gray-400">vs</span>
-                          <span className="text-sm font-semibold text-white truncate">
+                          <span className="text-sm text-gray-400">vs</span>
+                          <span className="text-[15px] font-semibold text-white truncate">
                             {item.team2}
                           </span>
                         </div>
@@ -212,27 +212,27 @@ export default function Matches({ pageView }: MatchProps) {
 
                       {/* Tournament */}
                       <div className="min-w-[34%] text-right">
-                        <div className="text-sm font-semibold text-gray-200 truncate">
+                        <div className="text-[15px] font-semibold text-gray-200 truncate">
                           {item.match_event}
                         </div>
-                        <div className="text-xs text-gray-400 truncate">
+                        <div className="text-sm text-gray-400 truncate">
                           {item.match_series}
                         </div>
                       </div>
 
                       {/* Region/Stage/Link text */}
                       <div className="min-w-[20%] text-right">
-                        <span className="text-xs text-gray-400 truncate">
+                        <span className="text-sm text-gray-400 truncate">
                           {tournament?.region || ""}
                         </span>
                       </div>
 
                       {/* Right-most default Valorant logo */}
-                      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                      <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center">
                         <img
                           src="/valorantLogo.png"
                           alt="Valorant Logo"
-                          className="w-6 h-6 object-contain"
+                          className="w-10 h-10 object-contain opacity-65 grayscale brightness-90 contrast-125"
                         />
                       </div>
                     </div>

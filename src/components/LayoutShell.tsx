@@ -98,29 +98,79 @@ export default function LayoutShell({
         </div>
       </main>
 
-      <footer className="pl-12 bg-[#151515] text-white">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <p>
-            <span className="font-bold">Strafe</span> was made by{" "}
-            <a
-              className="text-blue-400 underline"
-              target="_blank"
-              href="https://www.linkedin.com/in/zi-jun-jiang/"
-              rel="noopener noreferrer"
-            >
-              Zi Jun Jiang
-            </a>{" "}
-            using the{" "}
-            <a
-              className="text-blue-400 underline"
-              href="https://www.fantacss.smoljames.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              FantaCSS
-            </a>{" "}
-            design library.
-          </p>
+      <footer className="bg-[#111111] text-white border-t border-[#232323] mt-16">
+        <div className="max-w-7xl mx-auto px-6 py-14">
+          <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+            <div>
+              <div className="flex items-center gap-3">
+                <img
+                  src="/strafeLogo.png"
+                  alt="Strafe logo"
+                  className="h-10 w-10 object-contain"
+                />
+                <div>
+                  <p className="text-xl font-extrabold tracking-[0.12em] text-white">
+                    STRAFE
+                  </p>
+                  <p className="mt-1 text-sm text-[#7f7f7f]">
+                    Everything esports, all in one place.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-white">
+                Creator
+              </p>
+              <p className="mt-4 text-lg font-semibold text-[#f2f2f2]">
+                Zi Jun Jiang
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[#7f7f7f]">
+                Designer and developer behind the Strafe experience.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-white">
+                Socials
+              </p>
+              <div className="mt-4 flex flex-wrap gap-4">
+                <a
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#363636] text-[#e4ef43] transition-colors hover:border-[#e4ef43] hover:text-white"
+                  target="_blank"
+                  href="https://www.linkedin.com/in/zi-jun-jiang/"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5 fill-current"
+                    aria-hidden="true"
+                  >
+                    <path d="M4.98 3.5C4.98 4.88 3.87 6 2.49 6S0 4.88 0 3.5 1.11 1 2.49 1s2.49 1.12 2.49 2.5ZM.5 8h4V23h-4V8Zm7 0h3.83v2.05h.05c.53-1.01 1.84-2.08 3.79-2.08 4.05 0 4.8 2.66 4.8 6.12V23h-4v-7.84c0-1.87-.03-4.27-2.6-4.27-2.6 0-3 2.03-3 4.13V23h-4V8Z" />
+                  </svg>
+                </a>
+                <a
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#363636] text-[#e4ef43] transition-colors hover:border-[#e4ef43] hover:text-white"
+                  target="_blank"
+                  href="https://github.com/zijunj"
+                  rel="noopener noreferrer"
+                  aria-label="GitHub"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5 fill-current"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 .5C5.65.5.5 5.66.5 12.03c0 5.09 3.29 9.4 7.86 10.92.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.73-1.56-2.56-.29-5.26-1.29-5.26-5.74 0-1.27.45-2.3 1.19-3.11-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.19 1.19a11.05 11.05 0 0 1 5.8 0c2.21-1.5 3.18-1.19 3.18-1.19.64 1.58.24 2.75.12 3.04.74.81 1.19 1.84 1.19 3.11 0 4.46-2.7 5.44-5.28 5.73.42.36.78 1.08.78 2.17 0 1.57-.01 2.84-.01 3.22 0 .31.21.68.8.56A11.54 11.54 0 0 0 23.5 12.03C23.5 5.66 18.35.5 12 .5Z" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
     </>

@@ -55,15 +55,18 @@ export default function Matches({ pageView }: MatchProps) {
               .sort(
                 (a, b) =>
                   new Date(a.unix_timestamp).getTime() -
-                  new Date(b.unix_timestamp).getTime()
+                  new Date(b.unix_timestamp).getTime(),
               )
               .slice(0, 8)
-              .reduce((acc, item) => {
-                const key = item.match_event || "Other Tournament";
-                if (!acc[key]) acc[key] = [];
-                acc[key].push(item);
-                return acc;
-              }, {} as Record<string, MatchItem[]>)
+              .reduce(
+                (acc, item) => {
+                  const key = item.match_event || "Other Tournament";
+                  if (!acc[key]) acc[key] = [];
+                  acc[key].push(item);
+                  return acc;
+                },
+                {} as Record<string, MatchItem[]>,
+              ),
           ).map(([tournament, matches], i) => (
             <div key={i}>
               {/* Tournament Header */}
@@ -123,27 +126,39 @@ export default function Matches({ pageView }: MatchProps) {
               .sort(
                 (a, b) =>
                   new Date(a.unix_timestamp).getTime() -
-                  new Date(b.unix_timestamp).getTime()
+                  new Date(b.unix_timestamp).getTime(),
               )
               // group matches by day
-              .reduce((acc, item) => {
-                const dateObj = new Date(item.unix_timestamp);
-                const dateKey = dateObj.toLocaleDateString("en-US", {
-                  weekday: "long", // Sunday
-                  month: "long", // September
-                  day: "numeric", // 14
-                  year: "numeric", // 2025
-                });
-                if (!acc[dateKey]) acc[dateKey] = [];
-                acc[dateKey].push(item);
-                return acc;
-              }, {} as Record<string, MatchItem[]>)
+              .reduce(
+                (acc, item) => {
+                  const dateObj = new Date(item.unix_timestamp);
+                  const dateKey = dateObj.toLocaleDateString("en-US", {
+                    weekday: "long", // Sunday
+                    month: "long", // September
+                    day: "numeric", // 14
+                    year: "numeric", // 2025
+                  });
+                  if (!acc[dateKey]) acc[dateKey] = [];
+                  acc[dateKey].push(item);
+                  return acc;
+                },
+                {} as Record<string, MatchItem[]>,
+              ),
           ).map(([date, matches], i) => (
             <div key={i} className="mb-6">
               {/* Date Header */}
-              <h2 className="text-gray-300 text-lg font-semibold px-3 py-2 bg-[#181818] rounded-t-lg">
+              <h2 className="text-white text-lg font-black px-4 py-3 bg-[#151515] rounded-t-lg border-t border-l border-r border-[#2c2c2c]">
                 {date}
               </h2>
+
+              {/* Column Headers */}
+              <div className="hidden sm:flex justify-between items-center px-4 py-2 text-xs uppercase tracking-wider text-gray-300 bg-[#181818] border-b border-[#2c2c2c]">
+                <div className="w-20 text-center">Time</div>
+                <div className="flex-1 text-left pl-2">Teams</div>
+                <div className="min-w-[34%] text-right">Tournament</div>
+                <div className="min-w-[20%] text-right">Region</div>
+                <div className="w-10"></div>
+              </div>
 
               {/* Matches under this date */}
               {matches.map((item, j) => {
@@ -151,80 +166,74 @@ export default function Matches({ pageView }: MatchProps) {
 
                 // find tournament logo by matching match_event to tournament.title
                 const tournament = (tournamentData ?? []).find(
-                  (t) => t.title === item.match_event
+                  (t) => t.title === item.match_event,
                 );
                 const logo = tournament?.thumb || "/valorantLogo.png";
                 // generate slug from match info
                 const matchPath = item.match_page.replace(
                   "https://www.vlr.gg/",
-                  ""
+                  "",
                 );
                 const [id, slug] = matchPath.split("/", 2);
 
                 return (
                   <Link
-                    key={id} // ✅ unique key here
+                    key={id}
                     href={{
                       pathname: `/matches/${id}/${slug}`,
                     }}
                   >
                     <div
                       key={j}
-                      className="flex justify-between items-center p-3 bg-[#202020] hover:bg-[#2A2A2A] transition border-b border-[#1a1a1a] rounded-b-lg"
+                      className="flex items-center gap-4 px-4 py-3 bg-[#1f1f1f] hover:bg-[#2e2e2e] transition border-b-2 border-[#2d2d2d]"
                     >
-                      {/* Left: Logo */}
-                      <div className="flex items-center justify-center w-16">
+                      {/* Time */}
+                      <div className="relative flex items-start justify-center flex-shrink-0 w-20 h-12 text-center">
+                        <span className="text-3xl font-bold text-gray-100 leading-none">
+                          {hour.toString().padStart(2, "0")}
+                        </span>
+                        <span className="absolute top-0 right-0 text-base font-semibold text-gray-400 -translate-y-1">
+                          {minute}
+                        </span>
+                      </div>
+
+                      {/* Teams */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white truncate">
+                            {item.team1}
+                          </span>
+                          <span className="text-xs text-gray-400">vs</span>
+                          <span className="text-sm font-semibold text-white truncate">
+                            {item.team2}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tournament */}
+                      <div className="min-w-[34%] text-right">
+                        <div className="text-sm font-semibold text-gray-200 truncate">
+                          {item.match_event}
+                        </div>
+                        <div className="text-xs text-gray-400 truncate">
+                          {item.match_series}
+                        </div>
+                      </div>
+
+                      {/* Region/Stage/Link text */}
+                      <div className="min-w-[20%] text-right">
+                        <span className="text-xs text-gray-400 truncate">
+                          {tournament?.region || ""}
+                        </span>
+                      </div>
+
+                      {/* Right-most default Valorant logo */}
+                      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
                         <img
                           src="/valorantLogo.png"
                           alt="Valorant Logo"
                           className="w-6 h-6 object-contain"
                         />
-                      </div>
-
-                      {/* Center: Teams */}
-                      <div className="flex-1 px-2">
-                        <div className="flex items-center space-x-2">
-                          <div className="flex items-center space-x-1">
-                            <span className="text-sm font-medium">
-                              {item.team1}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <div className="flex items-center space-x-1 text-gray-400">
-                            <span className="text-sm font-medium">
-                              {item.team2}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Tournament Info */}
-                      <div className="text-right w-40">
-                        <div className="text-sm font-semibold text-gray-200">
-                          {item.match_event}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {item.match_series}
-                        </div>
-                      </div>
-
-                      {/* Right-most Logo + Time */}
-                      <div className="flex items-center space-x-3 w-28 justify-end">
-                        {/* Logo column */}
-                        <div className="flex items-center justify-center w-10">
-                          <img
-                            src={logo}
-                            alt={tournament?.title || "Tournament Logo"}
-                            className="w-8 h-8"
-                          />
-                        </div>
-
-                        {/* Time column */}
-                        <div className="text-gray-300 text-sm font-medium w-12 text-right">
-                          {(hour % 12 || 12).toString().padStart(2, "0")}:
-                          {minute}
-                        </div>
                       </div>
                     </div>
                   </Link>

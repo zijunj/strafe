@@ -9,7 +9,7 @@ export function getMatchStartTime(unix_timestamp: string) {
   // Parse as UTC, then convert to local timezone
   const matchStartTime = dayjs.utc(unix_timestamp).tz(dayjs.tz.guess());
 
-  const hour = matchStartTime.hour() % 12 || 12; // 12-hour format
+  const hour = matchStartTime.hour(); // 24-hour format for table-style clocks
   const minute = matchStartTime.minute().toString().padStart(2, "0"); // "00", "05", etc.
 
   return { hour, minute };

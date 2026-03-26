@@ -9,7 +9,7 @@ interface ParsedQuery {
   entity: "player" | "team" | "match" | "general";
   filters: {
     region?: string;
-    timespanDays?: number;
+    timespanDays?: number | "all";
     team?: string;
     player?: string;
   };
@@ -35,7 +35,7 @@ interface AIResult {
   retrievalMeta?: {
     source: "supabase" | "mock";
     appliedRegion: string;
-    appliedTimespanDays: number;
+    appliedTimespanDays: number | "all";
     rowCount: number;
   };
 }
@@ -51,6 +51,7 @@ export default function AIAssistant() {
   const [result, setResult] = useState<AIResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showDebug, setShowDebug] = useState(true);
 
   const submitQuestion = async (questionOverride?: string) => {
     const nextQuestion = (questionOverride ?? question).trim();
@@ -163,7 +164,10 @@ export default function AIAssistant() {
                 Region: {result.retrievalMeta.appliedRegion}
               </span>
               <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
-                Timespan: {result.retrievalMeta.appliedTimespanDays} days
+                Timespan:{" "}
+                {result.retrievalMeta.appliedTimespanDays === "all"
+                  ? "all"
+                  : `${result.retrievalMeta.appliedTimespanDays} days`}
               </span>
               <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
                 Rows: {result.retrievalMeta.rowCount}
@@ -180,54 +184,80 @@ export default function AIAssistant() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-          <div className="rounded-xl border border-[#2f2f2f] bg-[#151515] p-5">
+        <div className="rounded-xl border border-[#2f2f2f] bg-[#151515] p-5">
+          <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-gray-400">
-              Parsed Query
+              Debug View
             </p>
-            <pre className="mt-3 overflow-x-auto text-xs leading-6 text-gray-300">
-              {JSON.stringify(result?.parsedQuery ?? null, null, 2)}
-            </pre>
+            <button
+              type="button"
+              onClick={() => setShowDebug((current) => !current)}
+              className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-gray-300 transition-colors hover:border-[#FFE44F] hover:text-white"
+            >
+              {showDebug ? "Hide" : "Show"}
+            </button>
           </div>
 
-          <div className="rounded-xl border border-[#2f2f2f] bg-[#151515] p-5">
-            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-gray-400">
-              Supporting Data
-            </p>
-            <div className="mt-3 space-y-3">
-              {(result?.supportingData ?? []).map((record) => (
-                <article
-                  key={record.id}
-                  className="rounded-lg border border-[#2f2f2f] bg-[#202020] p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-bold text-white">
-                        {record.player}
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        {record.team} • {record.region}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-[#151515] px-3 py-1 text-xs font-bold text-[#FFE44F]">
-                      Rating {record.rating}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-300">
-                    <p>ACS: {record.acs}</p>
-                    <p>K/D: {record.kd}</p>
-                    <p>ADR: {record.adr}</p>
-                    <p>HS%: {record.hsPercentage}</p>
-                    <p>Rounds: {record.roundsPlayed}</p>
-                  </div>
-                </article>
-              ))}
-              {!result?.supportingData?.length && (
-                <p className="text-sm text-gray-500">
-                  Supporting rows will appear here after a query runs.
+          {showDebug && (
+            <div className="mt-4 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FFE44F]">
+                  Parsed Query
                 </p>
-              )}
+                <pre className="mt-3 overflow-x-auto rounded-lg border border-[#2f2f2f] bg-[#202020] p-4 text-xs leading-6 text-gray-300">
+                  {JSON.stringify(result?.parsedQuery ?? null, null, 2)}
+                </pre>
+              </div>
+
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FFE44F]">
+                  Retrieved Rows
+                </p>
+                <pre className="mt-3 max-h-[360px] overflow-auto rounded-lg border border-[#2f2f2f] bg-[#202020] p-4 text-xs leading-6 text-gray-300">
+                  {JSON.stringify(result?.supportingData ?? [], null, 2)}
+                </pre>
+              </div>
             </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-[#2f2f2f] bg-[#151515] p-5">
+          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-gray-400">
+            Supporting Data
+          </p>
+          <div className="mt-3 space-y-3">
+            {(result?.supportingData ?? []).map((record) => (
+              <article
+                key={record.id}
+                className="rounded-lg border border-[#2f2f2f] bg-[#202020] p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-white">
+                      {record.player}
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {record.team} • {record.region}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[#151515] px-3 py-1 text-xs font-bold text-[#FFE44F]">
+                    Rating {record.rating}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-300">
+                  <p>ACS: {record.acs}</p>
+                  <p>K/D: {record.kd}</p>
+                  <p>ADR: {record.adr}</p>
+                  <p>HS%: {record.hsPercentage}</p>
+                  <p>Rounds: {record.roundsPlayed}</p>
+                </div>
+              </article>
+            ))}
+            {!result?.supportingData?.length && (
+              <p className="text-sm text-gray-500">
+                Supporting rows will appear here after a query runs.
+              </p>
+            )}
           </div>
         </div>
       </div>

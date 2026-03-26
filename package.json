@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:ai:stats": "node scripts/sync-ai-stats.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

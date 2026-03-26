@@ -10,10 +10,16 @@ export async function POST(req: NextRequest) {
         ? body.region.trim().toLowerCase()
         : "na";
 
+    const rawTimespan = body.timespanDays;
+    const numericTimespan =
+      typeof rawTimespan === "string" ? Number(rawTimespan) : rawTimespan;
+
     const timespanDays =
-      body.timespanDays === 60 || body.timespanDays === 90
-        ? body.timespanDays
-        : 30;
+      rawTimespan === "all" || rawTimespan === 0
+        ? "all"
+        : numericTimespan === 60 || numericTimespan === 90
+          ? numericTimespan
+          : 30;
 
     const result = await syncAggregatedStats({
       region,

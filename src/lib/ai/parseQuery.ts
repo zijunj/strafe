@@ -1,6 +1,7 @@
 export interface ParsedQuery {
   rawQuestion: string;
   normalizedQuestion: string;
+  comparisonPlayers?: string[];
   metric:
     | "agents"
     | "rating"
@@ -20,7 +21,10 @@ export interface ParsedQuery {
   filters: {
     region?: "na" | "emea" | "pacific" | "br" | "global";
     timespanDays?: 30 | 60 | 90 | "all";
+    eventGroupId?: number | null;
     player?: string;
+    agent?: string;
+    minRounds?: number;
     team?: string;
   };
 }
@@ -95,6 +99,20 @@ const timespanMatchers: Array<{
   { days: 90, patterns: [/90 days/i, /last 3 months/i] },
 ];
 
+const eventGroupMatchers: Array<{
+  eventGroupId: number;
+  patterns: RegExp[];
+}> = [
+  {
+    eventGroupId: 86,
+    patterns: [
+      /\bvalorant champions tour 2026\b/i,
+      /\bvct 2026\b/i,
+      /\bchampions tour 2026\b/i,
+    ],
+  },
+];
+
 const invalidPlayerTokens = new Set([
   "in",
   "for",
@@ -118,8 +136,39 @@ const invalidPlayerTokens = new Set([
   "are",
   "does",
   "did",
-  "has"
+  "has",
+  "team",
 ]);
+
+const validAgents = [
+  "astra",
+  "breach",
+  "brimstone",
+  "chamber",
+  "clove",
+  "cypher",
+  "deadlock",
+  "fade",
+  "gekko",
+  "harbor",
+  "iso",
+  "jett",
+  "kayo",
+  "killjoy",
+  "neon",
+  "omen",
+  "phoenix",
+  "raze",
+  "reyna",
+  "sage",
+  "skye",
+  "sova",
+  "tejo",
+  "viper",
+  "vyse",
+  "waylay",
+  "yoru",
+] as const;
 
 function sanitizePlayerCandidate(value?: string): string | undefined {
   if (!value) {
@@ -134,6 +183,42 @@ function sanitizePlayerCandidate(value?: string): string | undefined {
   return invalidPlayerTokens.has(normalized.toLowerCase())
     ? undefined
     : normalized;
+}
+
+function sanitizeComparisonPlayers(players: Array<string | undefined>): string[] {
+  return players
+    .map((player) => sanitizePlayerCandidate(player))
+    .filter((player): player is string => Boolean(player));
+}
+
+function parseMinRounds(question: string): number | undefined {
+  const match = question.match(
+    /\b(?:at least|min(?:imum)?|over)\s+(\d+)\s+rounds?\b/i
+  );
+
+  if (!match) {
+    return undefined;
+  }
+
+  const parsed = Number(match[1]);
+  return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+function parseAgent(question: string): string | undefined {
+  const agentPattern = validAgents.join("|");
+  const match = question.match(
+    new RegExp(`\\b(?:on|with|using)\\s+(${agentPattern})\\b`, "i")
+  );
+
+  return match?.[1]?.toLowerCase();
+}
+
+function parseTeam(question: string): string | undefined {
+  const teamMatch =
+    question.match(/\bteam\s+([a-z0-9._-]+)\b/i) ||
+    question.match(/\bfor\s+team\s+([a-z0-9._-]+)\b/i);
+
+  return teamMatch?.[1];
 }
 
 export function parseQuery(question: string): ParsedQuery {
@@ -152,9 +237,16 @@ export function parseQuery(question: string): ParsedQuery {
   const matchedTimespan = timespanMatchers.find(({ patterns }) =>
     patterns.some((pattern) => pattern.test(normalizedQuestion))
   )?.days;
+  const matchedEventGroupId =
+    eventGroupMatchers.find(({ patterns }) =>
+      patterns.some((pattern) => pattern.test(normalizedQuestion))
+    )?.eventGroupId ?? null;
 
   const compareMatch = normalizedQuestion.match(
     /compare\s+([a-z0-9._-]+)\s+and\s+([a-z0-9._-]+)/i
+  );
+  const versusMatch = normalizedQuestion.match(
+    /\b([a-z0-9._-]+)\s+(?:vs|versus)\s+([a-z0-9._-]+)\b/i
   );
 
   const playerMatch =
@@ -188,9 +280,14 @@ export function parseQuery(question: string): ParsedQuery {
     /what\s+agents?\s+does\s+([a-z0-9._-]+)\s+play\b/i
   );
 
+  const comparisonPlayers = sanitizeComparisonPlayers([
+    compareMatch?.[1] || versusMatch?.[1],
+    compareMatch?.[2] || versusMatch?.[2],
+  ]);
+
   const inferredPlayer =
-    compareMatch
-      ? `${compareMatch[1]}, ${compareMatch[2]}`
+    comparisonPlayers.length > 0
+      ? undefined
       : sanitizePlayerCandidate(
           playerMatch?.[1] ||
             doesPlayerPlayMatch?.[1] ||
@@ -203,18 +300,30 @@ export function parseQuery(question: string): ParsedQuery {
             possessivePlayerMatch?.[1]
         );
 
+  const team = parseTeam(normalizedQuestion);
+  const agent = parseAgent(normalizedQuestion);
+  const minRounds = parseMinRounds(normalizedQuestion);
+
   return {
     rawQuestion: question,
     normalizedQuestion,
+    comparisonPlayers:
+      comparisonPlayers.length > 1 ? comparisonPlayers : undefined,
     metric: matchedMetric,
     entity:
-      compareMatch || inferredPlayer
+      comparisonPlayers.length > 0 || inferredPlayer
         ? "player"
+        : team
+          ? "team"
         : "general",
     filters: {
       region: matchedRegion,
       timespanDays: matchedTimespan ?? 30,
+      eventGroupId: matchedEventGroupId,
       player: inferredPlayer,
+      agent,
+      minRounds,
+      team,
     },
   };
 }

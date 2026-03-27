@@ -21,10 +21,21 @@ export async function POST(req: NextRequest) {
           ? numericTimespan
           : 30;
 
+    const rawEventGroupId = body.eventGroupId;
+    const numericEventGroupId =
+      typeof rawEventGroupId === "string"
+        ? Number(rawEventGroupId)
+        : rawEventGroupId;
+
     const eventGroupId =
-      typeof body.eventGroupId === "string" && body.eventGroupId.trim()
-        ? body.eventGroupId.trim()
-        : "all";
+      rawEventGroupId === null ||
+      rawEventGroupId === undefined ||
+      rawEventGroupId === "" ||
+      rawEventGroupId === "all"
+        ? null
+        : Number.isInteger(numericEventGroupId)
+          ? numericEventGroupId
+          : null;
 
     const result = await syncAggregatedStats({
       region,

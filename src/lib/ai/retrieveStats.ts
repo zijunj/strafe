@@ -27,6 +27,7 @@ export interface RetrievedStatsResult {
     source: "supabase" | "mock";
     appliedRegion: string;
     appliedTimespanDays: number | "all";
+    appliedEventGroupId: number | null;
     rowCount: number;
   };
 }
@@ -190,7 +191,10 @@ function applyLocalFilters(
   parsedQuery: ParsedQuery
 ): RetrievedStatRow[] {
   const region = parsedQuery.filters.region;
-  const playerFilter = parsedQuery.filters.player?.toLowerCase();
+  const playerFilters = getRequestedPlayers(parsedQuery);
+  const teamFilter = parsedQuery.filters.team?.toLowerCase();
+  const agentFilter = parsedQuery.filters.agent?.toLowerCase();
+  const minRounds = parsedQuery.filters.minRounds;
 
   let filteredRows = rows;
 
@@ -198,27 +202,42 @@ function applyLocalFilters(
     filteredRows = filteredRows.filter((row) => row.region === region);
   }
 
-  if (playerFilter) {
-    const requestedPlayers = playerFilter.split(",").map((part) => part.trim());
+  if (playerFilters.length > 0) {
     filteredRows = filteredRows.filter((row) =>
-      requestedPlayers.some((requested) =>
+      playerFilters.some((requested) =>
         row.player.toLowerCase().includes(requested)
       )
     );
   }
 
+  if (teamFilter) {
+    filteredRows = filteredRows.filter((row) =>
+      row.team.toLowerCase().includes(teamFilter)
+    );
+  }
+
+  if (agentFilter) {
+    filteredRows = filteredRows.filter((row) =>
+      row.agents.some((agent) => agent.toLowerCase() === agentFilter)
+    );
+  }
+
+  if (typeof minRounds === "number") {
+    filteredRows = filteredRows.filter((row) => row.roundsPlayed >= minRounds);
+  }
+
   return filteredRows;
 }
 
-function getRequestedPlayers(playerFilter?: string): string[] {
-  if (!playerFilter) {
-    return [];
-  }
+function getRequestedPlayers(parsedQuery: ParsedQuery): string[] {
+  const requestedPlayers = [
+    parsedQuery.filters.player,
+    ...(parsedQuery.comparisonPlayers ?? []),
+  ];
 
-  return playerFilter
-    .split(",")
-    .map((part) => part.trim().toLowerCase())
-    .filter(Boolean);
+  return requestedPlayers
+    .map((player) => player?.trim().toLowerCase())
+    .filter((player): player is string => Boolean(player));
 }
 
 function getMetricSortKey(metric: ParsedQuery["metric"]): keyof RetrievedStatRow {
@@ -292,9 +311,11 @@ async function retrieveStatsFromSupabase(
     const supabase = createServiceRoleSupabaseClient();
     const region = parsedQuery.filters.region;
     const timespanDays = parsedQuery.filters.timespanDays ?? 30;
-    const playerFilter = parsedQuery.filters.player?.trim();
-    const requestedPlayers = getRequestedPlayers(playerFilter);
+    const eventGroupId = parsedQuery.filters.eventGroupId ?? null;
+    const requestedPlayers = getRequestedPlayers(parsedQuery);
     const metricColumn = getSupabaseMetricColumn(parsedQuery.metric);
+    const teamFilter = parsedQuery.filters.team?.trim();
+    const minRounds = parsedQuery.filters.minRounds;
 
     let query = supabase
       .from("aggregated_player_stats")
@@ -311,6 +332,19 @@ async function retrieveStatsFromSupabase(
 
     if (region && region !== "global") {
       query = query.eq("region", region);
+    }
+
+    query =
+      eventGroupId === null
+        ? query.is("event_group_id", null)
+        : query.eq("event_group_id", eventGroupId);
+
+    if (teamFilter) {
+      query = query.ilike("team_name", `%${teamFilter}%`);
+    }
+
+    if (typeof minRounds === "number") {
+      query = query.gte("rounds_played", minRounds);
     }
 
     if (requestedPlayers.length === 1) {
@@ -351,7 +385,9 @@ export async function retrieveStats(
 ): Promise<RetrievedStatsResult> {
   const region = parsedQuery.filters.region ?? "global";
   const timespanDays = parsedQuery.filters.timespanDays ?? 30;
+  const eventGroupId = parsedQuery.filters.eventGroupId ?? null;
   const metricSortKey = getMetricSortKey(parsedQuery.metric);
+  const canUseMockFallback = process.env.NODE_ENV !== "production";
 
   const supabaseRows = await retrieveStatsFromSupabase(parsedQuery);
 
@@ -360,16 +396,20 @@ export async function retrieveStats(
       ? [...supabaseRows].sort(
           (a, b) => Number(b[metricSortKey]) - Number(a[metricSortKey])
         )
-      : applyLocalFilters(MOCK_PLAYER_STATS, parsedQuery).sort(
-          (a, b) => Number(b[metricSortKey]) - Number(a[metricSortKey])
-        );
+      : canUseMockFallback
+        ? applyLocalFilters(MOCK_PLAYER_STATS, parsedQuery).sort(
+            (a, b) => Number(b[metricSortKey]) - Number(a[metricSortKey])
+          )
+        : [];
 
   return {
     rows: rows.slice(0, 10),
     retrievalMeta: {
-      source: supabaseRows !== null ? "supabase" : "mock",
+      source:
+        supabaseRows !== null || !canUseMockFallback ? "supabase" : "mock",
       appliedRegion: region,
       appliedTimespanDays: timespanDays,
+      appliedEventGroupId: eventGroupId,
       rowCount: rows.length,
     },
   };

@@ -1,19 +1,26 @@
 
 const regions = ["ap", "br", "cn", "col", "eu", "jp", "kr", "la", "la-n", "la-s", "mn", "na", "oce"];
 const timespans = [30, 60, 90, "all"];
+const eventGroupArg = process.argv[2];
+const parsedEventGroupId =
+  eventGroupArg && eventGroupArg !== "all" ? Number(eventGroupArg) : null;
+const eventGroupId =
+  parsedEventGroupId !== null && !Number.isNaN(parsedEventGroupId)
+    ? parsedEventGroupId
+    : null;
 
 const baseUrl =
   process.env.NEXT_PUBLIC_BASE_URL ||
   process.env.BASE_URL ||
   "http://localhost:3000";
 
-async function syncOne(region, timespanDays) {
+async function syncOne(region, timespanDays, eventGroupId) {
   const response = await fetch(`${baseUrl}/api/ai/sync-stats`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ region, timespanDays }),
+    body: JSON.stringify({ region, timespanDays, eventGroupId }),
   });
 
   const payload = await response.json();
@@ -28,7 +35,9 @@ async function syncOne(region, timespanDays) {
 }
 
 async function main() {
-  console.log(`Starting AI stats sync against ${baseUrl}`);
+  console.log(
+    `Starting AI stats sync against ${baseUrl} for event_group_id=${eventGroupId ?? "all"}`
+  );
 
   const results = [];
 
@@ -36,15 +45,16 @@ async function main() {
     for (const timespanDays of timespans) {
       console.log(`Syncing ${region} / ${timespanDays}d ...`);
 
-      const result = await syncOne(region, timespanDays);
+      const result = await syncOne(region, timespanDays, eventGroupId);
       results.push({
         region,
         timespanDays,
+        eventGroupId,
         insertedCount: result.insertedCount,
       });
 
       console.log(
-        `Done ${region} / ${timespanDays}d -> inserted ${result.insertedCount}`
+        `Done ${region} / ${timespanDays}d / event_group_id=${eventGroupId ?? "all"} -> inserted ${result.insertedCount}`
       );
     }
   }
@@ -52,7 +62,7 @@ async function main() {
   console.log("\nSummary");
   for (const result of results) {
     console.log(
-      `${result.region} / ${result.timespanDays}d -> ${result.insertedCount}`
+      `${result.region} / ${result.timespanDays}d / event_group_id=${result.eventGroupId ?? "all"} -> ${result.insertedCount}`
     );
   }
 }

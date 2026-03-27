@@ -30,6 +30,7 @@ export interface AggregatedPlayerStatsInsert {
   team_name: string;
   region: string;
   timespan_days: number;
+  event_group_id: number | null;
   agents: string[];
   rating: number;
   acs: number;
@@ -49,7 +50,7 @@ export interface AggregatedPlayerStatsInsert {
 export interface SyncAggregatedStatsParams {
   region: string;
   timespanDays: 30 | 60 | 90 | "all";
-  eventGroupId?: string;
+  eventGroupId?: number | "all" | null;
   baseUrl?: string;
 }
 
@@ -60,7 +61,7 @@ export interface SyncAggregatedStatsResult {
 }
 
 function buildDeduplicationKey(row: AggregatedPlayerStatsInsert): string {
-  return `${row.player_name.toLowerCase()}::${row.region.toLowerCase()}::${row.timespan_days}`;
+  return `${row.player_name.toLowerCase()}::${row.region.toLowerCase()}::${row.timespan_days}::${row.event_group_id ?? "all"}`;
 }
 
 function dedupeAggregatedRows(
@@ -105,15 +106,38 @@ function toStoredTimespanValue(
   return normalizedTimespan === "all" ? 0 : normalizedTimespan;
 }
 
+function normalizeEventGroupId(
+  eventGroupId: SyncAggregatedStatsParams["eventGroupId"] | string | number | null | undefined
+): number | null {
+  if (
+    eventGroupId === null ||
+    eventGroupId === undefined ||
+    eventGroupId === "" ||
+    eventGroupId === "all"
+  ) {
+    return null;
+  }
+
+  const numericValue =
+    typeof eventGroupId === "string" ? Number(eventGroupId) : eventGroupId;
+
+  return Number.isInteger(numericValue) ? numericValue : null;
+}
+
 export function mapApiStatToAggregatedRow(
   apiRow: VlrStatsApiRow,
-  context: { region: string; timespanDays: SyncAggregatedStatsParams["timespanDays"] }
+  context: {
+    region: string;
+    timespanDays: SyncAggregatedStatsParams["timespanDays"];
+    eventGroupId?: SyncAggregatedStatsParams["eventGroupId"];
+  }
 ): AggregatedPlayerStatsInsert {
   return {
     player_name: apiRow.player,
     team_name: apiRow.org || "N/A",
     region: context.region,
     timespan_days: toStoredTimespanValue(context.timespanDays),
+    event_group_id: normalizeEventGroupId(context.eventGroupId),
     agents: apiRow.agents ?? [],
     rating: toNumber(apiRow.rating),
     acs: toNumber(apiRow.average_combat_score),
@@ -138,9 +162,10 @@ async function fetchStatsFromApi(
     params.baseUrl ||
     process.env.NEXT_PUBLIC_BASE_URL ||
     "http://localhost:3000";
+  const apiEventGroupId = normalizeEventGroupId(params.eventGroupId);
 
   const sourceUrl = `${baseUrl}/api/proxy?endpoint=${encodeURIComponent(
-    `stats?region=${params.region}&timespan=${params.timespanDays}&event_group_id=${params.eventGroupId ?? "all"}`
+    `stats?region=${params.region}&timespan=${params.timespanDays}&event_group_id=${apiEventGroupId ?? "all"}`
   )}`;
 
   const response = await fetch(sourceUrl, {
@@ -163,11 +188,14 @@ export async function syncAggregatedStats(
 ): Promise<SyncAggregatedStatsResult> {
   const { rows: apiRows, sourceUrl } = await fetchStatsFromApi(params);
   const supabase = createServiceRoleSupabaseClient();
+  const storedTimespanDays = toStoredTimespanValue(params.timespanDays);
+  const storedEventGroupId = normalizeEventGroupId(params.eventGroupId);
 
   const mappedRows = apiRows.map((row) =>
     mapApiStatToAggregatedRow(row, {
       region: params.region,
       timespanDays: params.timespanDays,
+      eventGroupId: params.eventGroupId,
     })
   );
 
@@ -181,14 +209,31 @@ export async function syncAggregatedStats(
     };
   }
 
+  let deleteQuery = supabase
+    .from("aggregated_player_stats")
+    .delete()
+    .eq("region", params.region)
+    .eq("timespan_days", storedTimespanDays);
+
+  deleteQuery =
+    storedEventGroupId === null
+      ? deleteQuery.is("event_group_id", null)
+      : deleteQuery.eq("event_group_id", storedEventGroupId);
+
+  const { error: deleteError } = await deleteQuery;
+
+  if (deleteError) {
+    throw new Error(
+      `Failed to clear existing aggregated stats: ${deleteError.message}`
+    );
+  }
+
   const { error } = await supabase
     .from("aggregated_player_stats")
-    .upsert(dedupedRows, {
-      onConflict: "player_name,region,timespan_days",
-    });
+    .insert(dedupedRows);
 
   if (error) {
-    throw new Error(`Failed to upsert aggregated stats: ${error.message}`);
+    throw new Error(`Failed to insert aggregated stats: ${error.message}`);
   }
 
   return {

@@ -5,11 +5,15 @@ import { FormEvent, useState } from "react";
 interface ParsedQuery {
   rawQuestion: string;
   normalizedQuestion: string;
+  comparisonPlayers?: string[];
   metric: string;
   entity: "player" | "team" | "match" | "general";
   filters: {
     region?: string;
     timespanDays?: number | "all";
+    eventGroupId?: number | null;
+    agent?: string;
+    minRounds?: number;
     team?: string;
     player?: string;
   };
@@ -36,7 +40,17 @@ interface AIResult {
     source: "supabase" | "mock";
     appliedRegion: string;
     appliedTimespanDays: number | "all";
+    appliedEventGroupId: number | null;
     rowCount: number;
+  };
+  uiHints?: {
+    intent: "comparison" | "player_lookup" | "team_lookup" | "leaderboard";
+    title: string;
+    highlightMetric: string;
+    highlightPlayers?: string[];
+    highlightTeam?: string;
+    showSupportingData: boolean;
+    suggestedFollowUps: string[];
   };
 }
 
@@ -172,9 +186,22 @@ export default function AIAssistant() {
               <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
                 Rows: {result.retrievalMeta.rowCount}
               </span>
+              <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
+                Event Group: {result.retrievalMeta.appliedEventGroupId ?? "all"}
+              </span>
             </div>
           )}
           <div className="mt-3 min-h-24 text-sm leading-7 text-gray-200">
+            {result?.uiHints && (
+              <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-bold uppercase tracking-[0.08em] text-white">
+                  {result.uiHints.title}
+                </span>
+                <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
+                  Metric: {result.uiHints.highlightMetric}
+                </span>
+              </div>
+            )}
             {result?.answer || (
               <span className="text-gray-500">
                 Ask a question to generate an answer and see the supporting

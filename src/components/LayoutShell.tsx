@@ -24,7 +24,7 @@ export default function LayoutShell({
         </Modal>
       )}
 
-      <header className="bg-[#151515] text-white border-b border-[#151515]">
+      <header className="shell-fade-in bg-[#151515]/90 text-white border-b border-[#151515] backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 pt-4 flex justify-between items-center">
           {/* Left Logo */}
           <div className="flex items-center gap-1">
@@ -86,19 +86,22 @@ export default function LayoutShell({
         </div>
 
         {/* NavBar below */}
-        <div className="mt-4 bg-[#242424]">
+        <div className="mt-4 bg-[#242424]/95">
           <NavBar />
         </div>
       </header>
 
       <main>
-        <div className="bg-[url('/valorant.png')] bg-top bg-center bg-no-repeat h-128 w-full" />
-        <div className="relative -mt-110 z-10 max-w-7xl mx-auto space-y-4">
+        <div className="hero-reveal relative h-128 w-full overflow-hidden">
+          <div className="absolute inset-0 bg-[url('/valorant.png')] bg-top bg-center bg-no-repeat" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[#111111]" />
+        </div>
+        <div className="content-rise stagger-1 relative -mt-110 z-10 max-w-7xl mx-auto space-y-4">
           {children}
         </div>
       </main>
 
-      <footer className="bg-[#111111] text-white border-t border-[#232323] mt-16">
+      <footer className="shell-fade-in stagger-2 bg-[#111111] text-white border-t border-[#232323] mt-16">
         <div className="max-w-7xl mx-auto px-6 py-14">
           <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
             <div>

@@ -5,9 +5,7 @@ import Tournaments from "@/components/Tournaments";
 import News from "@/components/News";
 import Results from "@/components/Results";
 import AboutValorant from "@/components/AboutValorant";
-import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
 
 export default function HomePage() {
   return (
@@ -15,7 +13,7 @@ export default function HomePage() {
       {/* Left Column */}
       <div className="flex-1 space-y-4">
         {/* Logo + Intro */}
-        <div className="flex items-center gap-4">
+        <div className="content-rise stagger-1 flex items-center gap-4">
           <img
             src="/valorantLogo.png"
             alt="Valorant Logo"
@@ -32,23 +30,27 @@ export default function HomePage() {
         </div>
 
         {/* News Card */}
-        <News newsView="featured" />
+        <div className="content-rise stagger-2">
+          <News newsView="featured" />
+        </div>
 
         {/* Tournament Card */}
-        <div className="relative bg-[#151515] rounded-lg overflow-hidden border border-[#151515] ring-1 ring-stone-700">
+        <div className="content-rise stagger-3 relative bg-[#151515] rounded-lg overflow-hidden border border-[#151515] ring-1 ring-stone-700">
           <div className="relative max-w-7xl">
             <Tournaments pageView="home" tournamentView="ongoing" />
           </div>
         </div>
 
         {/* About Valorant Section */}
-        <AboutValorant />
+        <div className="content-rise stagger-4">
+          <AboutValorant />
+        </div>
       </div>
 
       {/* Right Column: Matches and Results */}
       <div className="w-[360px] mt-[70px] space-y-4">
         {/* Upcoming Matches Card */}
-        <div className="bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
+        <div className="content-rise stagger-3 bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
           <div className="px-4 py-3 border-b border-[#2e2e2e]">
             <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
               Upcoming Valorant Matches
@@ -70,7 +72,7 @@ export default function HomePage() {
         </div>
 
         {/* Latest Results Card */}
-        <div className="bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
+        <div className="content-rise stagger-5 bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
           <div className="px-4 py-3 border-b border-[#2e2e2e]">
             <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
               Latest Valorant Results

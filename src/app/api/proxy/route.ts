@@ -3,6 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL = process.env.VLR_API_BASE_URL!;
 
+function normalizeStatsEndpoint(endpoint: string): string {
+  const parsedUrl = new URL(endpoint, "https://vlr-proxy.local");
+  const normalizedPath = parsedUrl.pathname.replace(/^\/+/, "");
+
+  if (normalizedPath === "stats" && !parsedUrl.searchParams.has("event_group_id")) {
+    parsedUrl.searchParams.set("event_group_id", "all");
+  }
+
+  return `${parsedUrl.pathname}${parsedUrl.search}`;
+}
+
 export async function GET(req: NextRequest) {
   const endpoint = req.nextUrl.searchParams.get("endpoint");
 
@@ -13,9 +24,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const normalizedEndpoint = endpoint.startsWith("/")
-    ? endpoint
-    : `/${endpoint}`;
+  const normalizedEndpoint = normalizeStatsEndpoint(
+    endpoint.startsWith("/") ? endpoint : `/${endpoint}`
+  );
 
   const targetUrl = `${BASE_URL}${normalizedEndpoint}`;
 

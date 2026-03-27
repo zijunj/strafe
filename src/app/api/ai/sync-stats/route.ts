@@ -21,9 +21,15 @@ export async function POST(req: NextRequest) {
           ? numericTimespan
           : 30;
 
+    const eventGroupId =
+      typeof body.eventGroupId === "string" && body.eventGroupId.trim()
+        ? body.eventGroupId.trim()
+        : "all";
+
     const result = await syncAggregatedStats({
       region,
       timespanDays,
+      eventGroupId,
     });
 
     return NextResponse.json({

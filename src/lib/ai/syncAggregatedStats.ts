@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "../supabase/server";
+import { createServiceRoleSupabaseClient } from "../supabase/server";
 
 export interface VlrStatsApiRow {
   player: string;
@@ -49,6 +49,7 @@ export interface AggregatedPlayerStatsInsert {
 export interface SyncAggregatedStatsParams {
   region: string;
   timespanDays: 30 | 60 | 90 | "all";
+  eventGroupId?: string;
   baseUrl?: string;
 }
 
@@ -139,7 +140,7 @@ async function fetchStatsFromApi(
     "http://localhost:3000";
 
   const sourceUrl = `${baseUrl}/api/proxy?endpoint=${encodeURIComponent(
-    `stats?region=${params.region}&timespan=${params.timespanDays}`
+    `stats?region=${params.region}&timespan=${params.timespanDays}&event_group_id=${params.eventGroupId ?? "all"}`
   )}`;
 
   const response = await fetch(sourceUrl, {
@@ -161,7 +162,7 @@ export async function syncAggregatedStats(
   params: SyncAggregatedStatsParams
 ): Promise<SyncAggregatedStatsResult> {
   const { rows: apiRows, sourceUrl } = await fetchStatsFromApi(params);
-  const supabase = createServerSupabaseClient();
+  const supabase = createServiceRoleSupabaseClient();
 
   const mappedRows = apiRows.map((row) =>
     mapApiStatToAggregatedRow(row, {

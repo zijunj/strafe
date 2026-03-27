@@ -59,7 +59,7 @@ export default function Stats({ filters }: StatsProps) {
     PlayerStats[]
   >({
     key: cacheKey,
-    url: `stats?region=${filters.region}&timespan=${filters.timespan}&min_opponent_rating=${filters.minRating}`,
+    url: `stats?region=${filters.region}&timespan=${filters.timespan}&event_group_id=all&min_opponent_rating=${filters.minRating}`,
     parse: (res) => res.data?.segments || [],
   });
 

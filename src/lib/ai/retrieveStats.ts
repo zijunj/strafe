@@ -1,5 +1,5 @@
 import type { ParsedQuery } from "./parseQuery";
-import { createServerSupabaseClient } from "../supabase/server";
+import { createServiceRoleSupabaseClient } from "../supabase/server";
 
 export interface RetrievedStatRow {
   id: string;
@@ -289,7 +289,7 @@ async function retrieveStatsFromSupabase(
   parsedQuery: ParsedQuery
 ): Promise<RetrievedStatRow[] | null> {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = createServiceRoleSupabaseClient();
     const region = parsedQuery.filters.region;
     const timespanDays = parsedQuery.filters.timespanDays ?? 30;
     const playerFilter = parsedQuery.filters.player?.trim();

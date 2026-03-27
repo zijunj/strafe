@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#151515] text-white">
+      <body className="antialiased">
         <div id="portal" />
         {/* AuthProvider must be a client component */}
         <AuthContextProvider>

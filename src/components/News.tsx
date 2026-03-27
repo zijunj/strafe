@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import useValorantApiWithCache from "../app/api/Valorant";
 
-// Define expected structure for news item
 interface NewsItem {
   title: string;
   description: string;
@@ -40,29 +39,38 @@ export default function News({ newsView }: NewsProps) {
     fetchNewsImg();
   }, []);
 
-  // Find the featured article from newsData by title match
   const featured = newsData.find(
     (item) =>
       articleImg &&
-      item.title.trim().toLowerCase() === articleImg.title.trim().toLowerCase()
+      item.title.trim().toLowerCase() === articleImg.title.trim().toLowerCase(),
   );
 
-  // Filter the rest of the articles to exclude the featured one
   const rest = newsData.filter(
     (item) =>
       !articleImg ||
-      item.title.trim().toLowerCase() !== articleImg.title.trim().toLowerCase()
+      item.title.trim().toLowerCase() !== articleImg.title.trim().toLowerCase(),
   );
 
-  if (loading) return <p className="text-white">Loading...</p>;
-  if (!newsData || newsData.length === 0)
-    return <p className="text-white">No news found.</p>;
+  if (loading) {
+    return (
+      <div className="p-4">
+        <p className="body-text">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!newsData || newsData.length === 0) {
+    return (
+      <div className="p-4">
+        <p className="body-text">No news found.</p>
+      </div>
+    );
+  }
 
   return (
-    <section className="w-full text-white">
+    <section className="w-full text-[var(--color-text-primary)]">
       {newsView === "featured" ? (
-        // ⭐ Featured News Layout
-        <div className="relative bg-[#151515] h-[366px] w-full rounded-lg overflow-hidden border border-[#151515] ring-1 ring-stone-700 group">
+        <div className="relative card h-[366px] w-full overflow-hidden group">
           <div className="relative h-[310px] w-full overflow-hidden">
             {articleImg && (
               <div
@@ -70,50 +78,47 @@ export default function News({ newsView }: NewsProps) {
                 style={{ backgroundImage: `url(${articleImg.img})` }}
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#151515]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-bg-surface)]" />
           </div>
 
           <div className="relative -mt-24 px-6 pb-4">
-            <h2 className="text-2xl font-bold mb-2">{featured?.title}</h2>
-            <p className="text-gray-300 text-sm mb-2 line-clamp-3">
-              {featured?.description}
-            </p>
-            <div className="text-xs text-gray-400 mb-4">
+            <h2 className="card-title mb-2">{featured?.title}</h2>
+            <p className="body-text mb-2 line-clamp-3">{featured?.description}</p>
+            <div className="text-xs text-[var(--color-text-muted)] mb-4">
               {featured?.date} • {featured?.author}
             </div>
             <a
               href={featured?.url_path}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-yellow-300 hover:underline"
+              className="link-accent"
             >
               Read more →
             </a>
           </div>
         </div>
       ) : (
-        // 📰 Normal News List Layout
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {rest.slice(0, 6).map((item, i) => (
             <article
               key={i}
-              className="bg-[#1a1a1a] rounded-lg p-4 border border-[#2a2a2a] hover:bg-[#222] transition"
+              className="card hover:bg-[var(--color-bg-surface-elevated)] transition"
             >
-              <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-              <p className="text-sm text-gray-400 mb-2 line-clamp-3">
-                {item.description}
-              </p>
-              <div className="text-xs text-gray-500 mb-4">
-                {item.date} • {item.author}
+              <div className="card-body">
+                <h3 className="card-title mb-2">{item.title}</h3>
+                <p className="body-text mb-2 line-clamp-3">{item.description}</p>
+                <div className="text-xs text-[var(--color-text-muted)] mb-4">
+                  {item.date} • {item.author}
+                </div>
+                <a
+                  href={item.url_path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link-accent"
+                >
+                  Read more →
+                </a>
               </div>
-              <a
-                href={item.url_path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-yellow-300 hover:underline"
-              >
-                Read more →
-              </a>
             </article>
           ))}
         </div>

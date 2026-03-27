@@ -63,15 +63,12 @@ export default function Stats({ filters }: StatsProps) {
     parse: (res) => res.data?.segments || [],
   });
 
-  if (loading) return <p className="text-white">Loading...</p>;
+  if (loading) return <p className="status-note">Loading...</p>;
 
   const filteredData = statsData.filter((player) => {
     const rounds = Number(player.rounds_played);
 
     if (filters.minRounds && rounds < filters.minRounds) {
-      console.log(
-        `Excluded ${player.player} (rounds ${rounds} < minRounds ${filters.minRounds})`
-      );
       return false;
     }
 
@@ -81,52 +78,39 @@ export default function Stats({ filters }: StatsProps) {
         .map((a) => a.toLowerCase())
         .includes(filters.agent.toLowerCase())
     ) {
-      console.log(
-        `Excluded ${player.player} (agent filter ${filters.agent} not in ${player.agents})`
-      );
       return false;
     }
 
-    console.log(`Included ${player.player}`);
     return true;
   });
 
   const getCellClasses = (column: ColumnKey) =>
     highlightedColumn === column
-      ? "px-3 py-4 text-center font-bold text-[#FFE44F]"
-      : "px-3 py-4 text-center text-[#d6d6d6]";
+      ? "text-accent font-bold"
+      : "text-[var(--color-text-secondary)]";
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-8">
-      <div className="mb-6">
-        <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#FFE44F]">
-          Stats Overview
-        </p>
-        <h1 className="mt-2 text-2xl font-extrabold text-white">
-          Top Player Stats
-        </h1>
-      </div>
-
-      <div className="overflow-x-auto rounded-2xl border border-[#303030] bg-[#1b1b1b] shadow-[0_18px_60px_rgba(0,0,0,0.25)]">
-        <table className="min-w-full border-collapse">
+    <section className="pt-2">
+      <div className="table-container shadow-card">
+        <table className="data-table">
           <thead>
-            <tr className="bg-[#171717] text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#8b8b8b]">
+            <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   className={
-                    column.key === "player"
-                      ? "px-4 py-4 text-left"
-                      : "px-3 py-4 text-center"
+                    column.key === "player" ? "text-left" : "text-center"
                   }
                 >
                   <button
                     type="button"
                     onClick={() => setHighlightedColumn(column.key)}
-                    className={`w-full transition-colors hover:text-white ${
+                    className={`w-full transition-colors hover:text-[var(--color-text-primary)] ${
                       column.key === "player" ? "text-left" : "text-center"
                     } ${
-                      highlightedColumn === column.key ? "text-[#FFE44F]" : ""
+                      highlightedColumn === column.key
+                        ? "text-accent"
+                        : "text-[var(--color-text-muted)]"
                     }`}
                   >
                     {column.label}
@@ -137,57 +121,92 @@ export default function Stats({ filters }: StatsProps) {
           </thead>
           <tbody>
             {filteredData.slice(0, 25).map((item, i) => (
-              <tr
-                key={i}
-                className={`border-t border-[#2d2d2d] text-sm transition-colors hover:bg-[#242424] ${
-                  i % 2 === 0 ? "bg-[#1d1d1d]" : "bg-[#212121]"
-                }`}
-              >
+              <tr key={i}>
                 <td
-                  className={`px-4 py-4 font-semibold ${
+                  className={`font-semibold ${
                     highlightedColumn === "player"
-                      ? "text-[#FFE44F]"
-                      : "text-white"
+                      ? "text-accent"
+                      : "text-[var(--color-text-primary)]"
                   }`}
                 >
                   {item.player}{" "}
-                  <span className="text-xs text-[#8b8b8b]">({item.org})</span>
+                  <span className="text-[var(--color-text-muted)]">
+                    ({item.org})
+                  </span>
                 </td>
-                <td className={getCellClasses("agents")}>
+                <td className={`text-center ${getCellClasses("agents")}`}>
                   {item.agents?.join(", ") || "-"}
                 </td>
-                <td className={getCellClasses("rounds_played")}>
+                <td
+                  className={`text-center ${getCellClasses("rounds_played")}`}
+                >
                   {item.rounds_played}
                 </td>
-                <td className={getCellClasses("rating")}>{item.rating}</td>
-                <td className={getCellClasses("average_combat_score")}>
+                <td className={`text-center ${getCellClasses("rating")}`}>
+                  {item.rating}
+                </td>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "average_combat_score"
+                  )}`}
+                >
                   {item.average_combat_score}
                 </td>
-                <td className={getCellClasses("kill_deaths")}>
+                <td className={`text-center ${getCellClasses("kill_deaths")}`}>
                   {item.kill_deaths}
                 </td>
-                <td className={getCellClasses("kill_assists_survived_traded")}>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "kill_assists_survived_traded"
+                  )}`}
+                >
                   {item.kill_assists_survived_traded}
                 </td>
-                <td className={getCellClasses("average_damage_per_round")}>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "average_damage_per_round"
+                  )}`}
+                >
                   {item.average_damage_per_round}
                 </td>
-                <td className={getCellClasses("kills_per_round")}>
+                <td
+                  className={`text-center ${getCellClasses("kills_per_round")}`}
+                >
                   {item.kills_per_round}
                 </td>
-                <td className={getCellClasses("assists_per_round")}>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "assists_per_round"
+                  )}`}
+                >
                   {item.assists_per_round}
                 </td>
-                <td className={getCellClasses("first_kills_per_round")}>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "first_kills_per_round"
+                  )}`}
+                >
                   {item.first_kills_per_round}
                 </td>
-                <td className={getCellClasses("first_deaths_per_round")}>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "first_deaths_per_round"
+                  )}`}
+                >
                   {item.first_deaths_per_round}
                 </td>
-                <td className={getCellClasses("headshot_percentage")}>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "headshot_percentage"
+                  )}`}
+                >
                   {item.headshot_percentage}
                 </td>
-                <td className={getCellClasses("clutch_success_percentage")}>
+                <td
+                  className={`text-center ${getCellClasses(
+                    "clutch_success_percentage"
+                  )}`}
+                >
                   {item.clutch_success_percentage}
                 </td>
               </tr>

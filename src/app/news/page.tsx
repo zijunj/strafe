@@ -7,50 +7,46 @@ import Link from "next/link";
 
 export default function NewsPage() {
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* 🏷️ Header */}
-      <div className="max-w-7xl mx-auto flex items-center gap-4 mb-6">
-        <img src="/valorantLogo.png" alt="Valorant Logo" className="h-[48px]" />
-        <div>
-          <h1 className="text-3xl font-extrabold text-white leading-tight">
-            Valorant Esports News
-          </h1>
-          <p className="text-sm text-gray-400">Read up on the latest news.</p>
+    <div className="page-shell">
+      <div className="content-rise stagger-1 page-hero">
+        <img
+          src="/valorantLogo.png"
+          alt="Valorant Logo"
+          className="page-hero-icon"
+        />
+        <div className="page-hero-copy">
+          <h1 className="page-title">Valorant Esports News</h1>
+          <p className="page-subtitle">Read up on the latest news.</p>
         </div>
       </div>
 
-      {/* 📄 Content */}
-      <div className="flex flex-col lg:flex-row items-start gap-8">
-        {/* LEFT COLUMN: Featured + Normal news */}
+      <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div className="flex-1 space-y-5">
-          {/* ⭐ Featured news */}
-          <News newsView="featured" />
-
-          {/* 📰 Normal news grid */}
-          <News newsView="normal" />
+          <div className="content-rise stagger-2">
+            <News newsView="featured" />
+          </div>
+          <div className="content-rise stagger-3">
+            <News newsView="normal" />
+          </div>
         </div>
 
-        {/* 📅 RIGHT COLUMN: Sidebar with tournaments + upcoming matches */}
-        <aside className="w-full lg:w-[300px] flex flex-col gap-6 h-fit">
-          {/* 🏆 Tournaments section */}
-          <Tournaments pageView="news" tournamentView="ongoing" />
+        <aside className="flex h-fit w-full flex-col gap-6 lg:w-[300px]">
+          <div className="content-rise stagger-3">
+            <Tournaments pageView="news" tournamentView="ongoing" />
+          </div>
 
-          {/* 🔥 Upcoming Matches section */}
-          <div className="bg-[#1E1E1E] rounded-lg border border-[#2a2a2a] ring-1 ring-[#2E2E2E]">
-            <h2 className="text-sm font-bold text-white mb-2 px-4 pt-4">
-              UPCOMING MATCHES
-            </h2>
+          <div className="content-rise stagger-4 card">
+            <div className="card-header">
+              <h2 className="card-title text-[var(--color-text-primary)]">
+                Upcoming Matches
+              </h2>
+            </div>
 
-            {/* Matches List */}
             <Matches pageView="home" />
 
-            {/* Footer Link */}
-            <div className="text-center">
-              <Link
-                href="/matches"
-                className="block pb-3 text-[#FFE44F] text-xs font-bold tracking-wide hover:underline"
-              >
-                ALL UPCOMING MATCHES →
+            <div className="card-footer text-center">
+              <Link href="/matches" className="link-accent">
+                All upcoming matches -&gt;
               </Link>
             </div>
           </div>

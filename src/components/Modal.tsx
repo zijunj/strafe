@@ -1,3 +1,5 @@
+"use client";
+
 import { ReactNode, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
@@ -16,7 +18,6 @@ export default function Modal({ children, handleCloseModal }: ModalProps) {
   if (!isClient) return null;
 
   const portalRoot = document.getElementById("portal");
-  console.log(portalRoot);
   if (!portalRoot) return null;
 
   return ReactDOM.createPortal(
@@ -24,10 +25,10 @@ export default function Modal({ children, handleCloseModal }: ModalProps) {
       {/* Underlay */}
       <div
         onClick={handleCloseModal}
-        className="absolute inset-0 bg-black/50 z-40"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm z-40"
       />
       {/* Modal Content */}
-      <div className="relative z-50 w-full max-w-md min-h-[500px] bg-[#181818] border border-[#303030] rounded-xl shadow-2xl p-6 flex flex-col gap-6">
+      <div className="relative z-50 w-full max-w-md min-h-[500px] card-elevated p-6 flex flex-col gap-6">
         {children}
       </div>
     </div>,

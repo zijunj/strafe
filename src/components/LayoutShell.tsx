@@ -24,47 +24,44 @@ export default function LayoutShell({
         </Modal>
       )}
 
-      <header className="shell-fade-in bg-[#151515]/90 text-white border-b border-[#151515] backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 pt-4 flex justify-between items-center">
+      <header className="shell-fade-in backdrop-blur-xl border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)]/90">
+        <div className="container-wide pt-4 flex justify-between items-center">
           {/* Left Logo */}
-          <div className="flex items-center gap-1">
-            <img
-              src="/strafeLogo.png"
-              alt="strafeLogo"
-              className="h-[24px] ml-2"
-            />
-            <h1 className="text-2xl font-bold">STRAFE</h1>
+          <div className="flex items-center gap-2">
+            <img src="/strafeLogo.png" alt="strafeLogo" className="h-6" />
+            <span className="text-2xl font-bold text-[var(--color-text-primary)]">
+              STRAFE
+            </span>
           </div>
 
           {/* Right User Section */}
           {globalUser ? (
             <div className="relative group inline-block">
               {/* Trigger */}
-              <div className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-3 cursor-pointer">
                 <div className="flex flex-col text-right">
-                  <span className="text-yellow-300 font-bold">
+                  <span className="text-[var(--color-primary)] font-bold">
                     {globalData?.username || "User"}
                   </span>
-                  <span className="text-gray-400 text-xs">
+                  <span className="text-[var(--color-text-muted)] text-xs">
                     @{globalData?.username || globalUser.email?.split("@")[0]}
                   </span>
                 </div>
                 <img
                   src="/default-avatar.png"
                   alt="avatar"
-                  className="w-8 h-8 rounded-full"
+                  className="w-8 h-8 rounded-full border border-[var(--color-border-default)]"
                 />
               </div>
 
-              {/* Dropdown (stays visible while hovering over trigger OR itself) */}
-              <div className="absolute right-0 mt-2 w-40 bg-[#242424] text-center border border-[#303030] rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+              {/* Dropdown */}
+              <div className="absolute right-0 mt-2 w-40 bg-[var(--color-bg-card)] border border-[var(--color-border-default)] rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 overflow-hidden">
                 <ul className="text-sm">
-                  <li className="px-4 py-2 text-white hover:bg-[#2a2a2a] cursor-pointer">
+                  <li className="px-4 py-1 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-elevated)] cursor-pointer transition-colors">
                     Profile
                   </li>
                   <li
-                    className="px-4 py-2 bg-[#e4ef43] text-black font-semibold hover:bg-[#151515] border hover:border-[#e4ef43] hover:text-[#e4ef43]
-             transition-colors duration-200"
+                    className="px-4 py-1 bg-[var(--color-primary)] text-black font-semibold hover:bg-[var(--color-primary-hover)] cursor-pointer transition-colors"
                     onClick={signOutUser}
                   >
                     Sign Out
@@ -75,10 +72,7 @@ export default function LayoutShell({
           ) : (
             <button
               onClick={() => setShowModal(true)}
-              className="px-6 py-2 rounded-lg font-bold uppercase 
-             bg-[#151515] text-[#e4ef43] border border-[#e4ef43] 
-             hover:bg-[#e4ef43] hover:text-black 
-             transition-colors duration-200"
+              className="btn-outline-accent"
             >
               Log In
             </button>
@@ -86,7 +80,7 @@ export default function LayoutShell({
         </div>
 
         {/* NavBar below */}
-        <div className="mt-4 bg-[#242424]/95">
+        <div className="mt-4 bg-[var(--color-bg-surface-elevated)]/95">
           <NavBar />
         </div>
       </header>
@@ -94,15 +88,15 @@ export default function LayoutShell({
       <main>
         <div className="hero-reveal relative h-128 w-full overflow-hidden">
           <div className="absolute inset-0 bg-[url('/valorant.png')] bg-top bg-center bg-no-repeat" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[#111111]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[var(--color-bg-body)]" />
         </div>
         <div className="content-rise stagger-1 relative -mt-110 z-10 max-w-7xl mx-auto space-y-4">
           {children}
         </div>
       </main>
 
-      <footer className="shell-fade-in stagger-2 bg-[#111111] text-white border-t border-[#232323] mt-16">
-        <div className="max-w-7xl mx-auto px-6 py-14">
+      <footer className="shell-fade-in stagger-2 bg-[var(--color-bg-page)] text-[var(--color-text-primary)] border-t border-[var(--color-border-subtle)] mt-16">
+        <div className="container-wide py-14">
           <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
             <div>
               <div className="flex items-center gap-3">
@@ -112,10 +106,10 @@ export default function LayoutShell({
                   className="h-10 w-10 object-contain"
                 />
                 <div>
-                  <p className="text-xl font-extrabold tracking-[0.12em] text-white">
+                  <p className="text-xl font-extrabold tracking-widest text-[var(--color-text-primary)]">
                     STRAFE
                   </p>
-                  <p className="mt-1 text-sm text-[#7f7f7f]">
+                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                     Everything esports, all in one place.
                   </p>
                 </div>
@@ -123,24 +117,20 @@ export default function LayoutShell({
             </div>
 
             <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-white">
-                Creator
-              </p>
-              <p className="mt-4 text-lg font-semibold text-[#f2f2f2]">
+              <p className="label text-[var(--color-text-primary)]">Creator</p>
+              <p className="mt-4 text-lg font-semibold text-[var(--color-text-secondary)]">
                 Zi Jun Jiang
               </p>
-              <p className="mt-2 text-sm leading-6 text-[#7f7f7f]">
+              <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
                 Designer and developer behind the Strafe experience.
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-white">
-                Socials
-              </p>
+              <p className="label text-[var(--color-text-primary)]">Socials</p>
               <div className="mt-4 flex flex-wrap gap-4">
                 <a
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#363636] text-[#e4ef43] transition-colors hover:border-[#e4ef43] hover:text-white"
+                  className="btn-icon"
                   target="_blank"
                   href="https://www.linkedin.com/in/zi-jun-jiang/"
                   rel="noopener noreferrer"
@@ -156,7 +146,7 @@ export default function LayoutShell({
                   </svg>
                 </a>
                 <a
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#363636] text-[#e4ef43] transition-colors hover:border-[#e4ef43] hover:text-white"
+                  className="btn-icon"
                   target="_blank"
                   href="https://github.com/zijunj"
                   rel="noopener noreferrer"

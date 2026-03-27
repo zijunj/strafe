@@ -109,29 +109,25 @@ export default function AIAssistant() {
   };
 
   return (
-    <section className="rounded-2xl border border-[#2f2f2f] bg-[#1E1E1E] overflow-hidden">
-      <div className="border-b border-[#2f2f2f] px-6 py-5">
-        <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#FFE44F]">
-          AI Search
-        </p>
-        <h2 className="mt-2 text-2xl font-extrabold text-white">
-          Ask stats questions like StatMuse
-        </h2>
-        <p className="mt-2 max-w-3xl text-sm text-gray-400">
+    <section className="card">
+      <div className="card-header">
+        <p className="section-label mb-2">AI Search</p>
+        <h2 className="card-title">Ask stats questions like StatMuse</h2>
+        <p className="card-subtitle mt-2 max-w-3xl">
           This page is now structured around a clean query pipeline: parse the
           question, retrieve relevant stats, generate an answer, and return the
           supporting records used to answer it.
         </p>
       </div>
 
-      <div className="space-y-6 px-6 py-6">
+      <div className="card-body space-y-6">
         <div className="grid gap-3 md:grid-cols-3">
           {suggestedQuestions.map((suggestion) => (
             <button
               key={suggestion}
               type="button"
               onClick={() => submitQuestion(suggestion)}
-              className="rounded-lg border border-[#3a3a3a] bg-[#242424] px-4 py-3 text-left text-sm text-gray-200 transition-colors hover:border-[#FFE44F] hover:text-white"
+              className="btn-secondary text-left"
             >
               {suggestion}
             </button>
@@ -139,7 +135,7 @@ export default function AIAssistant() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <label htmlFor="ai-question" className="block text-sm font-semibold text-white">
+          <label htmlFor="ai-question" className="label block">
             Ask a question
           </label>
           <textarea
@@ -148,99 +144,95 @@ export default function AIAssistant() {
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="Who has the best K/D in EMEA?"
-            className="w-full rounded-lg border border-[#3a3a3a] bg-[#151515] px-4 py-3 text-white outline-none transition-colors placeholder:text-gray-500 focus:border-[#FFE44F]"
+            className="textarea-field resize-none"
           />
           <button
             type="submit"
             disabled={isLoading}
-            className="rounded-lg bg-[#FFE44F] px-5 py-3 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-primary"
           >
             {isLoading ? "Thinking..." : "Ask AI"}
           </button>
         </form>
 
         {error && (
-          <div className="rounded-xl border border-[#5a2b2b] bg-[#2a1717] px-4 py-3 text-sm text-red-300">
+          <div className="rounded-lg border border-[var(--color-error)] bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)]">
             {error}
           </div>
         )}
 
-        <div className="rounded-xl border border-[#2f2f2f] bg-[#151515] p-5">
-          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-gray-400">
-            Answer
-          </p>
-          {result?.retrievalMeta && (
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-bold uppercase tracking-[0.08em] text-[#FFE44F]">
-                Source: {result.retrievalMeta.source}
-              </span>
-              <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
-                Region: {result.retrievalMeta.appliedRegion}
-              </span>
-              <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
-                Timespan:{" "}
-                {result.retrievalMeta.appliedTimespanDays === "all"
-                  ? "all"
-                  : `${result.retrievalMeta.appliedTimespanDays} days`}
-              </span>
-              <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
-                Rows: {result.retrievalMeta.rowCount}
-              </span>
-              <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
-                Event Group: {result.retrievalMeta.appliedEventGroupId ?? "all"}
-              </span>
-            </div>
-          )}
-          <div className="mt-3 min-h-24 text-sm leading-7 text-gray-200">
+        <div className="card">
+          <div className="card-header">
+            <p className="section-label text-[var(--color-text-muted)]">Answer</p>
+          </div>
+          <div className="card-body">
+            {result?.retrievalMeta && (
+              <div className="flex flex-wrap gap-2 text-xs mb-3">
+                <span className="badge-primary">
+                  Source: {result.retrievalMeta.source}
+                </span>
+                <span className="badge-secondary">
+                  Region: {result.retrievalMeta.appliedRegion}
+                </span>
+                <span className="badge-secondary">
+                  Timespan:{" "}
+                  {result.retrievalMeta.appliedTimespanDays === "all"
+                    ? "all"
+                    : `${result.retrievalMeta.appliedTimespanDays} days`}
+                </span>
+                <span className="badge-secondary">
+                  Rows: {result.retrievalMeta.rowCount}
+                </span>
+                <span className="badge-secondary">
+                  Event Group: {result.retrievalMeta.appliedEventGroupId ?? "all"}
+                </span>
+              </div>
+            )}
             {result?.uiHints && (
-              <div className="mb-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-bold uppercase tracking-[0.08em] text-white">
+              <div className="flex flex-wrap gap-2 text-xs mb-3">
+                <span className="badge-secondary">
                   {result.uiHints.title}
                 </span>
-                <span className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 font-semibold text-gray-300">
+                <span className="badge-muted">
                   Metric: {result.uiHints.highlightMetric}
                 </span>
               </div>
             )}
-            {result?.answer || (
-              <span className="text-gray-500">
-                Ask a question to generate an answer and see the supporting
-                data returned by the pipeline.
-              </span>
-            )}
+            <div className="body-text min-h-24">
+              {result?.answer || (
+                <span className="text-[var(--color-text-muted)]">
+                  Ask a question to generate an answer and see the supporting
+                  data returned by the pipeline.
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-[#2f2f2f] bg-[#151515] p-5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-gray-400">
-              Debug View
-            </p>
+        <div className="card">
+          <div className="card-header flex items-center justify-between gap-3">
+            <p className="section-label text-[var(--color-text-muted)]">Debug View</p>
             <button
               type="button"
               onClick={() => setShowDebug((current) => !current)}
-              className="rounded-full border border-[#3a3a3a] bg-[#202020] px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-gray-300 transition-colors hover:border-[#FFE44F] hover:text-white"
+              className="badge-secondary cursor-pointer hover:border-[var(--color-primary)] hover:text-[var(--color-text-primary)]"
             >
               {showDebug ? "Hide" : "Show"}
             </button>
           </div>
 
           {showDebug && (
-            <div className="mt-4 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+            <div className="card-body grid gap-6 lg:grid-cols-[1.1fr_1fr]">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FFE44F]">
-                  Parsed Query
-                </p>
-                <pre className="mt-3 overflow-x-auto rounded-lg border border-[#2f2f2f] bg-[#202020] p-4 text-xs leading-6 text-gray-300">
+                <p className="label mb-3 text-[var(--color-primary)]">Parsed Query</p>
+                <pre className="overflow-x-auto rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-4 text-xs leading-6 text-[var(--color-text-secondary)]">
                   {JSON.stringify(result?.parsedQuery ?? null, null, 2)}
                 </pre>
               </div>
 
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#FFE44F]">
-                  Retrieved Rows
-                </p>
-                <pre className="mt-3 max-h-[360px] overflow-auto rounded-lg border border-[#2f2f2f] bg-[#202020] p-4 text-xs leading-6 text-gray-300">
+                <p className="label mb-3 text-[var(--color-primary)]">Retrieved Rows</p>
+                <pre className="max-h-[360px] overflow-auto rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-4 text-xs leading-6 text-[var(--color-text-secondary)]">
                   {JSON.stringify(result?.supportingData ?? [], null, 2)}
                 </pre>
               </div>
@@ -248,40 +240,40 @@ export default function AIAssistant() {
           )}
         </div>
 
-        <div className="rounded-xl border border-[#2f2f2f] bg-[#151515] p-5">
-          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-gray-400">
-            Supporting Data
-          </p>
-          <div className="mt-3 space-y-3">
+        <div className="card">
+          <div className="card-header">
+            <p className="section-label text-[var(--color-text-muted)]">Supporting Data</p>
+          </div>
+          <div className="card-body space-y-3">
             {(result?.supportingData ?? []).map((record) => (
               <article
                 key={record.id}
-                className="rounded-lg border border-[#2f2f2f] bg-[#202020] p-4"
+                className="card"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-base font-bold text-white">
-                      {record.player}
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      {record.team} • {record.region}
-                    </p>
+                <div className="card-body">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="card-title">{record.player}</h3>
+                      <p className="card-subtitle">
+                        {record.team} • {record.region}
+                      </p>
+                    </div>
+                    <span className="badge-primary">
+                      Rating {record.rating}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-[#151515] px-3 py-1 text-xs font-bold text-[#FFE44F]">
-                    Rating {record.rating}
-                  </span>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-300">
-                  <p>ACS: {record.acs}</p>
-                  <p>K/D: {record.kd}</p>
-                  <p>ADR: {record.adr}</p>
-                  <p>HS%: {record.hsPercentage}</p>
-                  <p>Rounds: {record.roundsPlayed}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-[var(--color-text-secondary)]">
+                    <p>ACS: {record.acs}</p>
+                    <p>K/D: {record.kd}</p>
+                    <p>ADR: {record.adr}</p>
+                    <p>HS%: {record.hsPercentage}</p>
+                    <p>Rounds: {record.roundsPlayed}</p>
+                  </div>
                 </div>
               </article>
             ))}
             {!result?.supportingData?.length && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[var(--color-text-muted)]">
                 Supporting rows will appear here after a query runs.
               </p>
             )}

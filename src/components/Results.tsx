@@ -5,10 +5,8 @@ import parseTimeCompleted from "../app/utils/apiFunctions";
 
 interface ResultsProps {
   pageView: string;
-  setPageView?: (view: string) => void;
 }
 
-// Type definition for result data
 interface MatchResult {
   team1: string;
   team2: string;
@@ -30,9 +28,21 @@ export default function Results({ pageView }: ResultsProps) {
     parse: (res) => res.data?.segments || [],
   });
 
-  if (loading) return <p className="text-white">Loading...</p>;
-  if (!resultData || resultData.length === 0)
-    return <p className="text-white">No results found.</p>;
+  if (loading) {
+    return (
+      <div className="p-4">
+        <p className="body-text">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!resultData || resultData.length === 0) {
+    return (
+      <div className="p-4">
+        <p className="body-text">No results found.</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -44,17 +54,17 @@ export default function Results({ pageView }: ResultsProps) {
               if (!acc[tourneyKey]) acc[tourneyKey] = [];
               acc[tourneyKey].push(item);
               return acc;
-            }, {} as Record<string, MatchResult[]>)
+            }, {} as Record<string, MatchResult[]>),
           ).map(([tournament, matches], i) => (
             <div key={i}>
               {/* Tournament Header */}
-              <div className="flex items-center px-3 py-2 bg-[#252525] border-b border-[#2e2e2e]">
+              <div className="flex items-center px-3 py-2 bg-[var(--color-bg-surface-elevated)] border-b border-[var(--color-border-subtle)]">
                 <img
                   src={matches[0].tournament_icon}
                   alt=""
                   className="w-4 h-4 mr-2 opacity-70"
                 />
-                <span className="text-xs font-bold text-white truncate">
+                <span className="label text-[var(--color-text-primary)] truncate">
                   {tournament}
                 </span>
               </div>
@@ -72,11 +82,11 @@ export default function Results({ pageView }: ResultsProps) {
                   if (!acc[dateKey]) acc[dateKey] = [];
                   acc[dateKey].push({ ...item, dateObj });
                   return acc;
-                }, {} as Record<string, (MatchResult & { dateObj: Date })[]>)
+                }, {} as Record<string, (MatchResult & { dateObj: Date })[]>),
               ).map(([date, dayMatches], j) => (
                 <div key={j}>
                   {/* Date Subheader */}
-                  <div className="px-3 py-1 bg-[#1a1a1a] text-[10px] text-gray-500 font-medium border-b border-[#2e2e2e]">
+                  <div className="px-3 py-1 bg-[var(--color-bg-surface)] text-[10px] text-[var(--color-text-muted)] font-medium border-b border-[var(--color-border-subtle)]">
                     {date}
                   </div>
 
@@ -95,10 +105,10 @@ export default function Results({ pageView }: ResultsProps) {
                     return (
                       <div
                         key={k}
-                        className="flex items-stretch border-b border-[#2e2e2e] hover:bg-[#252525] transition cursor-pointer"
+                        className="flex items-stretch border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-surface-elevated)] transition cursor-pointer"
                       >
-                        {/* Left: Time - Hour large, minutes small */}
-                        <div className="flex items-center justify-center w-16 border-r border-[#2e2e2e] text-gray-400">
+                        {/* Left: Time */}
+                        <div className="flex items-center justify-center w-16 border-r border-[var(--color-border-subtle)] text-[var(--color-text-muted)]">
                           <div className="flex items-start">
                             <span className="text-lg font-bold leading-none">
                               {(hour % 12 || 12).toString().padStart(2, "0")}
@@ -113,28 +123,16 @@ export default function Results({ pageView }: ResultsProps) {
                         <div className="flex-1 py-2 px-3">
                           {/* Team 1 */}
                           <div className="flex items-center justify-between">
-                            <span
-                              className={`text-xs font-semibold ${
-                                team1Won
-                                  ? "text-white"
-                                  : "text-white"
-                              }`}
-                            >
+                            <span className="text-xs font-semibold text-[var(--color-text-primary)]">
                               {item.team1}
                             </span>
                             <div className="flex items-center space-x-1">
                               {team1Won && (
-                                <span className="text-green-400 text-[9px] font-bold">
+                                <span className="text-[var(--color-success)] text-[9px] font-bold">
                                   WIN
                                 </span>
                               )}
-                              <span
-                                className={`text-xs font-bold ${
-                                  team1Won
-                                    ? "text-white"
-                                    : "text-white"
-                                }`}
-                              >
+                              <span className="text-xs font-bold text-[var(--color-text-primary)]">
                                 {score1}
                               </span>
                             </div>
@@ -142,28 +140,16 @@ export default function Results({ pageView }: ResultsProps) {
 
                           {/* Team 2 */}
                           <div className="flex items-center justify-between mt-0.5">
-                            <span
-                              className={`text-xs font-semibold ${
-                                team2Won
-                                  ? "text-white"
-                                  : "text-white"
-                              }`}
-                            >
+                            <span className="text-xs font-semibold text-[var(--color-text-primary)]">
                               {item.team2}
                             </span>
                             <div className="flex items-center space-x-1">
                               {team2Won && (
-                                <span className="text-green-400 text-[9px] font-bold">
+                                <span className="text-[var(--color-success)] text-[9px] font-bold">
                                   WIN
                                 </span>
                               )}
-                              <span
-                                className={`text-xs font-bold ${
-                                  team2Won
-                                    ? "text-white"
-                                    : "text-white"
-                                }`}
-                              >
+                              <span className="text-xs font-bold text-[var(--color-text-primary)]">
                                 {score2}
                               </span>
                             </div>
@@ -180,7 +166,7 @@ export default function Results({ pageView }: ResultsProps) {
       )}
 
       {pageView === "match" && (
-        <section className="max-w-7xl mx-auto rounded-lg">
+        <section>
           {Object.entries(
             resultData.slice(0, 10).reduce((acc, item) => {
               const dateObj = parseTimeCompleted(item.time_completed);
@@ -194,11 +180,11 @@ export default function Results({ pageView }: ResultsProps) {
               if (!acc[dateKey]) acc[dateKey] = [];
               acc[dateKey].push({ ...item, dateObj });
               return acc;
-            }, {} as Record<string, (MatchResult & { dateObj: Date })[]>)
+            }, {} as Record<string, (MatchResult & { dateObj: Date })[]>),
           ).map(([date, matches], i) => (
             <div key={i} className="mb-6">
               {/* Date Header */}
-              <h2 className="text-gray-300 text-lg font-semibold px-3 py-2 bg-[#181818] rounded-t-lg">
+              <h2 className="text-[var(--color-text-secondary)] text-lg font-semibold px-3 py-2 bg-[var(--color-bg-card)] rounded-t-lg">
                 {date}
               </h2>
 
@@ -218,20 +204,24 @@ export default function Results({ pageView }: ResultsProps) {
                 return (
                   <div
                     key={j}
-                    className="flex justify-between items-center p-3 bg-[#202020] hover:bg-[#2A2A2A] transition border-b border-[#1a1a1a] last:rounded-b-lg"
+                    className="flex justify-between items-center p-3 bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-card)] transition border-b border-[var(--color-border-subtle)] last:rounded-b-lg"
                   >
                     {/* Left: Scores */}
                     <div className="flex flex-col items-center justify-center w-12">
                       <span
                         className={`text-xl font-bold ${
-                          team1Won ? "text-white" : "text-gray-400"
+                          team1Won
+                            ? "text-[var(--color-text-primary)]"
+                            : "text-[var(--color-text-muted)]"
                         }`}
                       >
                         {score1}
                       </span>
                       <span
                         className={`text-xl font-bold ${
-                          team2Won ? "text-white" : "text-gray-400"
+                          team2Won
+                            ? "text-[var(--color-text-primary)]"
+                            : "text-[var(--color-text-muted)]"
                         }`}
                       >
                         {score2}
@@ -249,8 +239,8 @@ export default function Results({ pageView }: ResultsProps) {
                         <span
                           className={`text-sm ${
                             team1Won
-                              ? "font-bold text-white"
-                              : "font-medium text-gray-400"
+                              ? "font-bold text-[var(--color-text-primary)]"
+                              : "font-medium text-[var(--color-text-muted)]"
                           }`}
                         >
                           {item.team1}
@@ -265,8 +255,8 @@ export default function Results({ pageView }: ResultsProps) {
                         <span
                           className={`text-sm ${
                             team2Won
-                              ? "font-bold text-white"
-                              : "font-medium text-gray-400"
+                              ? "font-bold text-[var(--color-text-primary)]"
+                              : "font-medium text-[var(--color-text-muted)]"
                           }`}
                         >
                           {item.team2}
@@ -276,7 +266,7 @@ export default function Results({ pageView }: ResultsProps) {
 
                     {/* Right: Tournament Info + Time */}
                     <div className="flex items-center space-x-4 w-60 justify-end">
-                      <div className="text-right text-xs text-gray-400">
+                      <div className="text-right text-xs text-[var(--color-text-muted)]">
                         <div>{item.tournament_name}</div>
                         <div>{item.round_info}</div>
                       </div>
@@ -285,11 +275,9 @@ export default function Results({ pageView }: ResultsProps) {
                         alt="Tournament Icon"
                         className="w-8 h-8"
                       />
-                      <span className="text-gray-300 text-sm">{`${(
-                        hour % 12 || 12
-                      )
-                        .toString()
-                        .padStart(2, "0")}:${minute}`}</span>
+                      <span className="text-[var(--color-text-secondary)] text-sm">
+                        {`${(hour % 12 || 12).toString().padStart(2, "0")}:${minute}`}
+                      </span>
                     </div>
                   </div>
                 );

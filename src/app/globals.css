@@ -1,25 +1,108 @@
 @import "tailwindcss";
 
+/* ============================================
+   STRAFE DESIGN SYSTEM
+   ============================================ */
+
+/* ------------------------------------------
+   Color Palette (CSS Custom Properties)
+   ------------------------------------------ */
 :root {
-  --page-bg: #111111;
-  --surface-0: #151515;
-  --surface-1: #1e1e1e;
-  --surface-border: #2e2e2e;
-  --accent: #ffe44f;
+  /* Primary Accent - Single consistent yellow */
+  --color-primary: #ffe44f;
+  --color-primary-hover: #f5d93d;
+  --color-primary-dim: rgba(255, 228, 79, 0.1);
+
+  /* Background Colors - Consolidated dark palette */
+  --color-bg-page: #0d0d0d;
+  --color-bg-body: #111111;
+  --color-bg-surface: #151515;
+  --color-bg-surface-elevated: #1a1a1a;
+  --color-bg-card: #1e1e1e;
+
+  /* Border Colors - Reduced to 3 consistent values */
+  --color-border-subtle: #2a2a2a;
+  --color-border-default: #333333;
+  --color-border-strong: #404040;
+
+  /* Text Colors - Clear hierarchy */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0a0a0;
+  --color-text-muted: #737373;
+  --color-text-disabled: #525252;
+
+  /* Status Colors */
+  --color-success: #4ade80;
+  --color-error: #f87171;
+
+  /* Shadows - Consistent depth system */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 18px 60px rgba(0, 0, 0, 0.35);
+
+  /* Border Radius - Consistent scale */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing Scale - Tailwind-compatible */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.12em;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
 }
 
+/* ------------------------------------------
+   Base Styles
+   ------------------------------------------ */
 html {
-  background: var(--page-bg);
+  background: var(--color-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(255, 228, 79, 0.1), transparent 26%),
-    linear-gradient(180deg, #161616 0%, #111111 45%, #0d0d0d 100%);
-  color: #fff;
+    radial-gradient(circle at top, var(--color-primary-dim), transparent 26%),
+    linear-gradient(180deg, #161616 0%, var(--color-bg-body) 45%, var(--color-bg-page) 100%);
+  color: var(--color-text-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* ------------------------------------------
+   Animation Utilities
+   ------------------------------------------ */
 @media (prefers-reduced-motion: no-preference) {
   .shell-fade-in {
     opacity: 0;
@@ -38,25 +121,11 @@ body {
     animation: contentRise 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
-  .stagger-1 {
-    animation-delay: 0.12s;
-  }
-
-  .stagger-2 {
-    animation-delay: 0.24s;
-  }
-
-  .stagger-3 {
-    animation-delay: 0.36s;
-  }
-
-  .stagger-4 {
-    animation-delay: 0.48s;
-  }
-
-  .stagger-5 {
-    animation-delay: 0.6s;
-  }
+  .stagger-1 { animation-delay: 0.12s; }
+  .stagger-2 { animation-delay: 0.24s; }
+  .stagger-3 { animation-delay: 0.36s; }
+  .stagger-4 { animation-delay: 0.48s; }
+  .stagger-5 { animation-delay: 0.6s; }
 }
 
 @keyframes shellFadeIn {
@@ -64,7 +133,6 @@ body {
     opacity: 0;
     transform: translateY(12px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -77,7 +145,6 @@ body {
     transform: scale(1.035) translateY(18px);
     filter: saturate(0.9) blur(6px);
   }
-
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -90,9 +157,493 @@ body {
     opacity: 0;
     transform: translateY(34px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ------------------------------------------
+   Typography Utilities
+   ------------------------------------------ */
+
+/* Section Label - Small uppercase text with accent color */
+.section-label {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-widest);
+  color: var(--color-primary);
+}
+
+/* Page Title - Main heading for pages */
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Page Subtitle - Supporting text below title */
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* Card Title - Headers inside cards */
+.card-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+/* Card Subtitle - Secondary text in cards */
+.card-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Label - Form labels, table headers */
+.label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-muted);
+}
+
+/* Body Text */
+.body-text {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* ------------------------------------------
+   Card Component Styles
+   ------------------------------------------ */
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card-elevated {
+  background: var(--color-bg-surface-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface);
+}
+
+.card-body {
+  padding: var(--space-5);
+}
+
+.card-footer {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* ------------------------------------------
+   Button Component Styles
+   ------------------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.btn:focus-visible {
+  ring: 2px;
+  ring-offset: 2px;
+  ring-offset-color: var(--color-bg-page);
+}
+
+.btn-primary {
+  composes: btn;
+  background: var(--color-primary);
+  color: #000;
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  composes: btn;
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.btn-secondary:hover {
+  background: var(--color-bg-surface-elevated);
+  border-color: var(--color-border-strong);
+}
+
+.btn-outline-accent {
+  composes: btn;
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.btn-outline-accent:hover {
+  background: var(--color-primary);
+  color: #000;
+}
+
+.btn-tab {
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  width: 126px;
+  padding: 0.85rem 1.4rem;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.btn-tab:hover {
+  background: var(--color-bg-surface-elevated);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+.btn-tab-active {
+  background: var(--color-primary);
+  width: 126px;
+  color: #000;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-tab-active:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-icon {
+  composes: btn;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  padding: 0;
+  border: 1px solid var(--color-border-default);
+  color: var(--color-primary);
+  background: transparent;
+}
+
+.btn-icon:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text-primary);
+}
+
+/* ------------------------------------------
+   Form Input Styles
+   ------------------------------------------ */
+.input-field,
+.select-field,
+.textarea-field {
+  width: 100%;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.input-field::placeholder,
+.textarea-field::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.input-field:hover,
+.select-field:hover,
+.textarea-field:hover {
+  border-color: var(--color-border-strong);
+}
+
+.input-field:focus,
+.select-field:focus,
+.textarea-field:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-dim);
+}
+
+.select-field {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23737373' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* ------------------------------------------
+   Table Styles
+   ------------------------------------------ */
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-default);
+  background: var(--color-bg-card);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.data-table thead {
+  background: var(--color-bg-surface);
+}
+
+.data-table th {
+  padding: var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-muted);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.data-table td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
+.data-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.data-table tbody tr:hover {
+  background: var(--color-bg-surface-elevated);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.data-table tbody tr:nth-child(even):hover {
+  background: var(--color-bg-surface-elevated);
+}
+
+/* ------------------------------------------
+   Navigation Link Styles
+   ------------------------------------------ */
+.nav-link {
+  position: relative;
+  padding-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.nav-link:hover {
+  color: var(--color-text-primary);
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transition: transform var(--transition-base);
+}
+
+
+.nav-link-active {
+  composes: nav-link;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.nav-link-active::after {
+  transform: scaleX(1);
+}
+
+
+
+/* ------------------------------------------
+   Badge/Tag Styles
+   ------------------------------------------ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.badge-primary {
+  composes: badge;
+  background: var(--color-primary);
+  color: #000;
+}
+
+.badge-secondary {
+  composes: badge;
+  background: var(--color-bg-surface-elevated);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-default);
+}
+
+.badge-muted {
+  composes: badge;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* ------------------------------------------
+   Link Styles
+   ------------------------------------------ */
+.link-accent {
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: opacity var(--transition-fast);
+}
+
+.link-accent:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ------------------------------------------
+   Utility Classes
+   ------------------------------------------ */
+.page-shell {
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 var(--space-6) var(--space-10);
+}
+
+.page-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.page-hero-icon {
+  width: 3rem;
+  height: 3rem;
+  object-fit: contain;
+}
+
+.page-hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.page-tabs {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.status-note {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+}
+
+.container-wide {
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-6);
+  padding-right: var(--space-6);
+}
+
+.text-accent {
+  color: var(--color-primary);
+}
+
+.bg-surface {
+  background: var(--color-bg-surface);
+}
+
+.bg-card {
+  background: var(--color-bg-card);
+}
+
+.border-subtle {
+  border-color: var(--color-border-subtle);
+}
+
+.border-default {
+  border-color: var(--color-border-default);
 }

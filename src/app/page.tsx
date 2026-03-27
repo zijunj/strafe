@@ -9,83 +9,69 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="max-w-7xl mx-auto flex items-start gap-6">
-      {/* Left Column */}
-      <div className="flex-1 space-y-4">
-        {/* Logo + Intro */}
-        <div className="content-rise stagger-1 flex items-center gap-4">
-          <img
-            src="/valorantLogo.png"
-            alt="Valorant Logo"
-            className="h-[48px]"
-          />
-          <div>
-            <h1 className="text-3xl font-extrabold text-white">
-              Valorant Esports
-            </h1>
-            <p className="text-sm text-gray-400">
-              Esports news, tournaments, matches, and much more.
-            </p>
+    <div className="page-shell">
+      <div className="flex items-start gap-6 xl:gap-8">
+        <div className="flex-1 space-y-4">
+          <div className="content-rise stagger-1 page-hero mb-0">
+            <img
+              src="/valorantLogo.png"
+              alt="Valorant Logo"
+              className="page-hero-icon"
+            />
+            <div className="page-hero-copy">
+              <h1 className="page-title">Valorant Esports</h1>
+              <p className="page-subtitle">
+                Esports news, tournaments, matches, and much more.
+              </p>
+            </div>
+          </div>
+
+          <div className="content-rise stagger-2">
+            <News newsView="featured" />
+          </div>
+
+          <div className="content-rise stagger-3 card-elevated relative">
+            <div className="relative max-w-7xl">
+              <Tournaments pageView="home" tournamentView="ongoing" />
+            </div>
+          </div>
+
+          <div className="content-rise stagger-4">
+            <AboutValorant />
           </div>
         </div>
 
-        {/* News Card */}
-        <div className="content-rise stagger-2">
-          <News newsView="featured" />
-        </div>
+        <div className="w-[360px] mt-[76px] space-y-4">
+          <div className="content-rise stagger-3 card">
+            <div className="card-header">
+              <h2 className="card-title text-[var(--color-text-primary)]">
+                Upcoming Valorant Matches
+              </h2>
+            </div>
 
-        {/* Tournament Card */}
-        <div className="content-rise stagger-3 relative bg-[#151515] rounded-lg overflow-hidden border border-[#151515] ring-1 ring-stone-700">
-          <div className="relative max-w-7xl">
-            <Tournaments pageView="home" tournamentView="ongoing" />
-          </div>
-        </div>
+            <Matches pageView="home" />
 
-        {/* About Valorant Section */}
-        <div className="content-rise stagger-4">
-          <AboutValorant />
-        </div>
-      </div>
-
-      {/* Right Column: Matches and Results */}
-      <div className="w-[360px] mt-[70px] space-y-4">
-        {/* Upcoming Matches Card */}
-        <div className="content-rise stagger-3 bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#2e2e2e]">
-            <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
-              Upcoming Valorant Matches
-            </h2>
+            <div className="card-footer text-center">
+              <Link href="/matches" className="link-accent">
+                All upcoming matches -&gt;
+              </Link>
+            </div>
           </div>
 
-          {/* Matches List */}
-          <Matches pageView="home" />
+          <div className="content-rise stagger-5 card">
+            <div className="card-header">
+              <h2 className="card-title text-[var(--color-text-primary)]">
+                Latest Valorant Results
+              </h2>
+            </div>
 
-          {/* Footer Link */}
-          <div className="text-center border-t border-[#2e2e2e]">
-            <Link
-              href="/matches"
-              className="block py-2.5 text-[#FFE44F] text-xs font-semibold hover:underline"
-            >
-              All upcoming matches →
-            </Link>
-          </div>
-        </div>
+            <Results pageView="home" />
 
-        {/* Latest Results Card */}
-        <div className="content-rise stagger-5 bg-[#1E1E1E] rounded-lg border border-[#2e2e2e] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#2e2e2e]">
-            <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
-              Latest Valorant Results
-            </h2>
-          </div>
-          <Results pageView="home" />
-          <div className="text-center border-t border-[#2e2e2e]">
-            <Link
-              href="/matches?tab=finished"
-              className="block py-2.5 text-[#FFE44F] text-xs font-semibold hover:underline"
-            >
-              All match results →
-            </Link>
+            <div className="card-footer text-center">
+              <Link href="/matches?tab=finished" className="link-accent">
+                All match results -&gt;
+              </Link>
+            </div>
           </div>
         </div>
       </div>

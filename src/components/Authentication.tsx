@@ -89,7 +89,7 @@ export default function Authentication({
       {!isRegistration && (
         <button
           onClick={() => setIsRegistration(true)}
-          className="w-full bg-[#e4ef43] text-black font-semibold py-3 rounded mb-6 hover:brightness-110 transition"
+          className="w-full bg-[#ffe44f] text-black font-semibold py-3 rounded mb-6 hover:brightness-110 transition"
         >
           SIGN UP
         </button>

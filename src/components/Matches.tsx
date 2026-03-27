@@ -1,3 +1,5 @@
+"use client";
+
 import useValorantApiWithCache from "../app/api/Valorant";
 import React from "react";
 import { getMatchStartTime } from "../app/utils/apiFunctions";
@@ -44,7 +46,13 @@ export default function Matches({ pageView }: MatchProps) {
       parse: (res) => res.data.segments,
     });
 
-  if (matchesLoading || tournamentsLoading) return <p>Loading...</p>;
+  if (matchesLoading || tournamentsLoading) {
+    return (
+      <div className="p-4">
+        <p className="body-text">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -70,8 +78,8 @@ export default function Matches({ pageView }: MatchProps) {
           ).map(([tournament, matches], i) => (
             <div key={i}>
               {/* Tournament Header */}
-              <div className="flex items-center px-3 py-2 bg-[#252525] border-b border-[#2e2e2e]">
-                <span className="text-xs font-bold text-white truncate">
+              <div className="flex items-center px-3 py-2 bg-[var(--color-bg-surface-elevated)] border-b border-[var(--color-border-subtle)]">
+                <span className="label text-[var(--color-text-primary)] truncate">
                   {tournament}
                 </span>
               </div>
@@ -79,15 +87,14 @@ export default function Matches({ pageView }: MatchProps) {
               {/* Matches under this tournament */}
               {matches.map((item, j) => {
                 const { hour, minute } = getMatchStartTime(item.unix_timestamp);
-                const timeString = `${hour.toString().padStart(2, "0")}:${minute}`;
 
                 return (
                   <div
                     key={j}
-                    className="flex items-stretch border-b border-[#2e2e2e] hover:bg-[#252525] transition cursor-pointer"
+                    className="flex items-stretch border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-surface-elevated)] transition cursor-pointer"
                   >
-                    {/* Left: Time - Hour large, minutes small */}
-                    <div className="flex items-center justify-center w-16 border-r border-[#2e2e2e] text-gray-400">
+                    {/* Left: Time */}
+                    <div className="flex items-center justify-center w-16 border-r border-[var(--color-border-subtle)] text-[var(--color-text-muted)]">
                       <div className="flex items-start">
                         <span className="text-xl font-bold leading-none">
                           {hour.toString().padStart(2, "0")}
@@ -101,12 +108,12 @@ export default function Matches({ pageView }: MatchProps) {
                     {/* Center: Teams */}
                     <div className="flex-1 py-2 px-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-white font-semibold truncate pr-2">
+                        <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
                           {item.team1}
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-white font-semibold truncate pr-2">
+                        <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
                           {item.team2}
                         </span>
                       </div>
@@ -120,7 +127,7 @@ export default function Matches({ pageView }: MatchProps) {
       )}
 
       {pageView === "match" && (
-        <section className="max-w-7xl mx-auto rounded-lg">
+        <section>
           {Object.entries(
             (matchData ?? [])
               .sort(
@@ -128,15 +135,14 @@ export default function Matches({ pageView }: MatchProps) {
                   new Date(a.unix_timestamp).getTime() -
                   new Date(b.unix_timestamp).getTime(),
               )
-              // group matches by day
               .reduce(
                 (acc, item) => {
                   const dateObj = new Date(item.unix_timestamp);
                   const dateKey = dateObj.toLocaleDateString("en-US", {
-                    weekday: "long", // Sunday
-                    month: "long", // September
-                    day: "numeric", // 14
-                    year: "numeric", // 2025
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
                   });
                   if (!acc[dateKey]) acc[dateKey] = [];
                   acc[dateKey].push(item);
@@ -147,12 +153,12 @@ export default function Matches({ pageView }: MatchProps) {
           ).map(([date, matches], i) => (
             <div key={i} className="mb-6">
               {/* Date Header */}
-              <h2 className="text-white text-lg font-black px-4 py-3 bg-[#151515] rounded-t-lg border-t border-l border-r border-[#2c2c2c]">
+              <h2 className="text-[var(--color-text-primary)] text-lg font-bold px-4 py-3 bg-[var(--color-bg-surface)] rounded-t-lg border-t border-l border-r border-[var(--color-border-default)]">
                 {date}
               </h2>
 
               {/* Column Headers */}
-              <div className="hidden sm:flex justify-between items-center px-4 py-2 text-xs uppercase tracking-wider text-gray-300 bg-[#181818] border-b border-[#2c2c2c]">
+              <div className="hidden sm:flex justify-between items-center px-4 py-2 text-xs uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-bg-card)] border-b border-[var(--color-border-subtle)]">
                 <div className="w-20 text-center">Time</div>
                 <div className="flex-1 text-left pl-2">Teams</div>
                 <div className="min-w-[34%] text-right">Tournament</div>
@@ -164,12 +170,10 @@ export default function Matches({ pageView }: MatchProps) {
               {matches.map((item, j) => {
                 const { hour, minute } = getMatchStartTime(item.unix_timestamp);
 
-                // find tournament logo by matching match_event to tournament.title
                 const tournament = (tournamentData ?? []).find(
                   (t) => t.title === item.match_event,
                 );
-                const logo = tournament?.thumb || "/valorantLogo.png";
-                // generate slug from match info
+
                 const matchPath = item.match_page.replace(
                   "https://www.vlr.gg/",
                   "",
@@ -185,14 +189,14 @@ export default function Matches({ pageView }: MatchProps) {
                   >
                     <div
                       key={j}
-                      className="flex items-center gap-4 px-4 py-3 bg-[#1f1f1f] hover:bg-[#2e2e2e] transition border-b-2 border-[#2d2d2d]"
+                      className="flex items-center gap-4 px-4 py-3 bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-card)] transition border-b border-[var(--color-border-subtle)]"
                     >
                       {/* Time */}
                       <div className="relative flex items-start justify-center flex-shrink-0 w-20 h-12 text-center">
-                        <span className="text-3xl font-bold text-gray-100 leading-none">
+                        <span className="text-3xl font-bold text-[var(--color-text-primary)] leading-none">
                           {hour.toString().padStart(2, "0")}
                         </span>
-                        <span className="absolute top-0 right-0 text-base font-semibold text-gray-400 -translate-y-1">
+                        <span className="absolute top-0 right-0 text-base font-semibold text-[var(--color-text-muted)] -translate-y-1">
                           {minute}
                         </span>
                       </div>
@@ -200,11 +204,11 @@ export default function Matches({ pageView }: MatchProps) {
                       {/* Teams */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-[15px] font-semibold text-white truncate">
+                          <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
                             {item.team1}
                           </span>
-                          <span className="text-sm text-gray-400">vs</span>
-                          <span className="text-[15px] font-semibold text-white truncate">
+                          <span className="text-sm text-[var(--color-text-muted)]">vs</span>
+                          <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
                             {item.team2}
                           </span>
                         </div>
@@ -212,22 +216,22 @@ export default function Matches({ pageView }: MatchProps) {
 
                       {/* Tournament */}
                       <div className="min-w-[34%] text-right">
-                        <div className="text-[15px] font-semibold text-gray-200 truncate">
+                        <div className="text-[15px] font-semibold text-[var(--color-text-secondary)] truncate">
                           {item.match_event}
                         </div>
-                        <div className="text-sm text-gray-400 truncate">
+                        <div className="text-sm text-[var(--color-text-muted)] truncate">
                           {item.match_series}
                         </div>
                       </div>
 
-                      {/* Region/Stage/Link text */}
+                      {/* Region */}
                       <div className="min-w-[20%] text-right">
-                        <span className="text-sm text-gray-400 truncate">
+                        <span className="text-sm text-[var(--color-text-muted)] truncate">
                           {tournament?.region || ""}
                         </span>
                       </div>
 
-                      {/* Right-most default Valorant logo */}
+                      {/* Logo */}
                       <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center">
                         <img
                           src="/valorantLogo.png"

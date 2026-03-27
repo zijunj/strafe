@@ -43,15 +43,13 @@ export default function AboutValorant() {
   };
 
   return (
-    <section className="w-full bg-[#1a1a1a] rounded-lg border border-[#2e2e2e] overflow-hidden">
-      {/* Header */}
-      <div className="bg-[#202020] px-6 py-4 border-b border-[#2e2e2e]">
-        <h2 className="text-lg font-bold text-white">About Valorant</h2>
+    <section className="card">
+      <div className="card-header">
+        <h2 className="card-title">About Valorant</h2>
       </div>
 
-      {/* Description */}
-      <div className="p-6">
-        <p className="text-gray-300 text-sm leading-relaxed mb-6">
+      <div className="card-body">
+        <p className="body-text mb-6">
           Valorant is Riot Games&apos; tactical first-person shooter that combines
           precise gunplay with unique agent abilities. Released in June 2020, it
           has become one of the premier esports titles with a thriving competitive
@@ -60,57 +58,48 @@ export default function AboutValorant() {
           pools.
         </p>
 
-        {/* FAQ Section */}
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Frequently Asked Questions
-          </h3>
+          <h3 className="label mb-3">Frequently Asked Questions</h3>
 
           {faqData.map((item, index) => (
-            <div
-              key={index}
-              className="border border-[#2e2e2e] rounded bg-[#151515] overflow-hidden"
-            >
+            <div key={index} className="card overflow-hidden">
               <button
                 onClick={() => toggleFAQ(index)}
-                className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-[#1e1e1e] transition-colors"
+                className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[var(--color-bg-surface-elevated)]"
               >
-                <span className="text-sm font-medium text-white">
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">
                   {item.question}
                 </span>
                 <span
-                  className={`text-gray-400 transform transition-transform ${
+                  className={`text-[var(--color-text-muted)] transition-transform ${
                     openIndex === index ? "rotate-180" : ""
                   }`}
                 >
-                  ▼
+                  v
                 </span>
               </button>
 
               {openIndex === index && (
                 <div className="px-4 pb-4">
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    {item.answer}
-                  </p>
+                  <p className="body-text">{item.answer}</p>
                 </div>
               )}
             </div>
           ))}
         </div>
 
-        {/* Quick Stats */}
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-[#151515] rounded border border-[#2e2e2e]">
-            <div className="text-xl font-bold text-[#FFE44F]">5v5</div>
-            <div className="text-xs text-gray-500">Team Format</div>
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="card p-3 text-center">
+            <div className="text-xl font-bold text-[var(--color-primary)]">5v5</div>
+            <div className="text-xs text-[var(--color-text-muted)]">Team Format</div>
           </div>
-          <div className="text-center p-3 bg-[#151515] rounded border border-[#2e2e2e]">
-            <div className="text-xl font-bold text-[#FFE44F]">25+</div>
-            <div className="text-xs text-gray-500">Agents</div>
+          <div className="card p-3 text-center">
+            <div className="text-xl font-bold text-[var(--color-primary)]">25+</div>
+            <div className="text-xs text-[var(--color-text-muted)]">Agents</div>
           </div>
-          <div className="text-center p-3 bg-[#151515] rounded border border-[#2e2e2e]">
-            <div className="text-xl font-bold text-[#FFE44F]">7</div>
-            <div className="text-xs text-gray-500">Maps</div>
+          <div className="card p-3 text-center">
+            <div className="text-xl font-bold text-[var(--color-primary)]">7</div>
+            <div className="text-xs text-[var(--color-text-muted)]">Maps</div>
           </div>
         </div>
       </div>

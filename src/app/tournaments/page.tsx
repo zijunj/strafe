@@ -9,48 +9,43 @@ export default function TournamentPage() {
   );
 
   return (
-    <>
-      <div className="max-w-7xl mx-auto flex items-center gap-4 mb-6">
-        <img src="/valorantLogo.png" alt="Valorant Logo" className="h-[48px]" />
-        <div>
-          <h1 className="text-3xl font-extrabold text-white leading-tight">
-            Valorant Tournaments
-          </h1>
-          <p className="text-sm text-gray-400">
+    <div className="page-shell">
+      <div className="content-rise stagger-1 page-hero">
+        <img
+          src="/valorantLogo.png"
+          alt="Valorant Logo"
+          className="page-hero-icon"
+        />
+        <div className="page-hero-copy">
+          <h1 className="page-title">Valorant Tournaments</h1>
+          <p className="page-subtitle">
             Schedule up for upcoming and ongoing tournaments.
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="max-w-7xl mx-auto flex space-x-2 mb-6">
+      <div className="content-rise stagger-2 page-tabs">
         <button
           onClick={() => setTournamentView("ongoing")}
-          className={`px-6 py-2 font-bold rounded-tl-md rounded-tr-md transition ${
-            tournamentView === "ongoing"
-              ? "bg-[#d2dc59] text-black"
-              : "bg-[#1a1a1a] text-gray-300 hover:bg-[#2a2a2a]"
-          }`}
+          className={tournamentView === "ongoing" ? "btn-tab-active" : "btn-tab"}
         >
           ONGOING
         </button>
         <button
           onClick={() => setTournamentView("upcoming")}
-          className={`px-6 py-2 font-bold rounded-tl-md rounded-tr-md transition ${
-            tournamentView === "upcoming"
-              ? "bg-[#d2dc59] text-black"
-              : "bg-[#1a1a1a] text-gray-300 hover:bg-[#2a2a2a]"
-          }`}
+          className={tournamentView === "upcoming" ? "btn-tab-active" : "btn-tab"}
         >
           UPCOMING
         </button>
       </div>
 
-      <Tournaments
-        pageView="tournament"
-        tournamentView={tournamentView}
-        setTournamentView={setTournamentView} // ✅ pass this instead of setPageView
-      />
-    </>
+      <div className="content-rise stagger-3">
+        <Tournaments
+          pageView="tournament"
+          tournamentView={tournamentView}
+          setTournamentView={setTournamentView}
+        />
+      </div>
+    </div>
   );
 }

@@ -19,6 +19,9 @@ async function syncOne(region, timespanDays, eventGroupId) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(process.env.AI_SYNC_SECRET
+        ? { Authorization: `Bearer ${process.env.AI_SYNC_SECRET}` }
+        : {}),
     },
     body: JSON.stringify({ region, timespanDays, eventGroupId }),
   });

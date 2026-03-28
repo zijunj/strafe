@@ -7,6 +7,7 @@ frontend:
         - env | grep -e VLR_API_BASE_URL >> .env.production
         - env | grep -e NEXT_PUBLIC_SUPABASE_URL >> .env.production
         - env | grep -e NEXT_PUBLIC_SUPABASE_ANON_KEY >> .env.production
+        - env | grep -e SUPABASE_SERVICE_ROLE_KEY >> .env.production
         - env | grep -e OPENAI_API_KEY >> .env.production
     build:
       commands:

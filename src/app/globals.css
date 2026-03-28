@@ -365,9 +365,7 @@ body {
   composes: btn;
   width: 44px;
   height: 44px;
-  border-radius: var(--radius-full);
   padding: 0;
-  border: 1px solid var(--color-border-default);
   color: var(--color-primary);
   background: transparent;
 }

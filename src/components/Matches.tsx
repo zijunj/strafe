@@ -34,15 +34,15 @@ interface TournamentItem {
 export default function Matches({ pageView }: MatchProps) {
   const { data: matchData = [], loading: matchesLoading } =
     useValorantApiWithCache<MatchItem[]>({
-      key: "upcomingMatches",
-      url: "match?q=upcoming",
+      key: "upcomingMatches-storage",
+      url: "storage/matches?status=upcoming",
       parse: (res) => res.data.segments,
     });
 
   const { data: tournamentData = [], loading: tournamentsLoading } =
     useValorantApiWithCache<TournamentItem[]>({
-      key: "tournaments",
-      url: "events",
+      key: "tournaments-storage",
+      url: "storage/events",
       parse: (res) => res.data.segments,
     });
 

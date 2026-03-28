@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync:ai:stats": "node scripts/sync-ai-stats.mjs"
+    "sync:ai:stats": "node scripts/sync-ai-stats.mjs",
+    "sync:tournament-storage": "node scripts/sync-tournament-match-storage.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

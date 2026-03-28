@@ -5,7 +5,7 @@ export interface RetrievedStatRow {
   id: string;
   player: string;
   team: string;
-  region: "na" | "emea" | "pacific" | "br";
+  region: string;
   agents: string[];
   rating: number;
   acs: number;
@@ -24,11 +24,36 @@ export interface RetrievedStatRow {
 export interface RetrievedStatsResult {
   rows: RetrievedStatRow[];
   retrievalMeta: {
-    source: "supabase" | "mock";
+    source: "supabase" | "mock" | "event_storage";
     appliedRegion: string;
     appliedTimespanDays: number | "all";
     appliedEventGroupId: number | null;
+    appliedEventName?: string | null;
     rowCount: number;
+  };
+  contextData: {
+    event?: {
+      id: number;
+      vlrEventId: number;
+      title: string;
+      status: string;
+      region: string | null;
+      dates: string | null;
+      prize: string | null;
+    } | null;
+    matches?: Array<{
+      vlrMatchId: number;
+      eventTitle: string | null;
+      eventSeries: string | null;
+      team1: string | null;
+      team2: string | null;
+      score1: string | null;
+      score2: string | null;
+      status: string;
+      scheduledAt: string | null;
+      dateLabel: string | null;
+      matchUrl: string;
+    }>;
   };
 }
 
@@ -36,7 +61,7 @@ interface AggregatedPlayerStatsRow {
   id: string;
   player_name: string;
   team_name: string | null;
-  region: RetrievedStatRow["region"];
+  region: string;
   timespan_days: "30" | "60" | "90" | "all" | number | string;
   agents: string[] | null;
   rating: number | string | null;
@@ -51,6 +76,49 @@ interface AggregatedPlayerStatsRow {
   first_deaths_per_round: number | string | null;
   clutch_success_percentage: number | string | null;
   rounds_played: number | string | null;
+}
+
+interface StoredEventRow {
+  id: number;
+  vlr_event_id: number;
+  title: string;
+  status: string;
+  region: string | null;
+  dates: string | null;
+  prize: string | null;
+}
+
+interface EventPlayerStatsRow {
+  id: number | string;
+  player_name: string | null;
+  team_name: string | null;
+  agents: string[] | null;
+  rounds_played: number | string | null;
+  rating: number | string | null;
+  average_combat_score: number | string | null;
+  kill_deaths: number | string | null;
+  kill_assists_survived_traded: number | string | null;
+  average_damage_per_round: number | string | null;
+  kills_per_round: number | string | null;
+  assists_per_round: number | string | null;
+  first_kills_per_round: number | string | null;
+  first_deaths_per_round: number | string | null;
+  headshot_percentage: number | string | null;
+  clutch_success_percentage: number | string | null;
+}
+
+interface StoredMatchRow {
+  vlr_match_id: number;
+  event_title: string | null;
+  event_series: string | null;
+  team_1_name: string | null;
+  team_2_name: string | null;
+  team_1_score: string | null;
+  team_2_score: string | null;
+  status: string;
+  scheduled_at: string | null;
+  date_label: string | null;
+  match_url: string;
 }
 
 const MOCK_PLAYER_STATS: RetrievedStatRow[] = [
@@ -164,6 +232,10 @@ function toNumber(value: number | string | null | undefined): number {
   return 0;
 }
 
+function normalizeForSearch(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 function mapSupabaseRow(row: AggregatedPlayerStatsRow): RetrievedStatRow {
   return {
     id: row.id,
@@ -186,6 +258,31 @@ function mapSupabaseRow(row: AggregatedPlayerStatsRow): RetrievedStatRow {
   };
 }
 
+function mapEventPlayerStatsRow(
+  row: EventPlayerStatsRow,
+  eventTitle: string
+): RetrievedStatRow {
+  return {
+    id: String(row.id),
+    player: row.player_name || "Unknown Player",
+    team: row.team_name || "Unknown Team",
+    region: eventTitle,
+    agents: row.agents || [],
+    rating: toNumber(row.rating),
+    acs: toNumber(row.average_combat_score),
+    kd: toNumber(row.kill_deaths),
+    kastPercentage: toNumber(row.kill_assists_survived_traded),
+    adr: toNumber(row.average_damage_per_round),
+    hsPercentage: toNumber(row.headshot_percentage),
+    killsPerRound: toNumber(row.kills_per_round),
+    assistsPerRound: toNumber(row.assists_per_round),
+    firstKillsPerRound: toNumber(row.first_kills_per_round),
+    firstDeathsPerRound: toNumber(row.first_deaths_per_round),
+    clutchSuccessPercentage: toNumber(row.clutch_success_percentage),
+    roundsPlayed: toNumber(row.rounds_played),
+  };
+}
+
 function applyLocalFilters(
   rows: RetrievedStatRow[],
   parsedQuery: ParsedQuery
@@ -199,7 +296,9 @@ function applyLocalFilters(
   let filteredRows = rows;
 
   if (region && region !== "global") {
-    filteredRows = filteredRows.filter((row) => row.region === region);
+    filteredRows = filteredRows.filter(
+      (row) => row.region.toLowerCase() === region
+    );
   }
 
   if (playerFilters.length > 0) {
@@ -304,6 +403,38 @@ function getSupabaseMetricColumn(metric: ParsedQuery["metric"]): string {
   }
 }
 
+function getEventStatMetricColumn(metric: ParsedQuery["metric"]): string {
+  switch (metric) {
+    case "acs":
+      return "average_combat_score";
+    case "kd":
+      return "kill_deaths";
+    case "adr":
+      return "average_damage_per_round";
+    case "kpr":
+      return "kills_per_round";
+    case "apr":
+      return "assists_per_round";
+    case "fkpr":
+      return "first_kills_per_round";
+    case "fdpr":
+      return "first_deaths_per_round";
+    case "kast_percentage":
+      return "kill_assists_survived_traded";
+    case "clutch_success_percentage":
+      return "clutch_success_percentage";
+    case "rounds_played":
+      return "rounds_played";
+    case "hs_percentage":
+      return "headshot_percentage";
+    case "rating":
+    case "agents":
+    case "general":
+    default:
+      return "rating";
+  }
+}
+
 async function retrieveStatsFromSupabase(
   parsedQuery: ParsedQuery
 ): Promise<RetrievedStatRow[] | null> {
@@ -380,6 +511,157 @@ async function retrieveStatsFromSupabase(
   }
 }
 
+async function findReferencedEvent(question: string) {
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select("id, vlr_event_id, title, status, region, dates, prize")
+      .limit(300);
+
+    if (error) {
+      console.error("Event lookup error:", error.message);
+      return null;
+    }
+
+    const normalizedQuestion = normalizeForSearch(question);
+    let bestMatch: StoredEventRow | null = null;
+    let bestScore = 0;
+
+    for (const event of (data ?? []) as StoredEventRow[]) {
+      const normalizedTitle = normalizeForSearch(event.title);
+
+      if (!normalizedTitle) {
+        continue;
+      }
+
+      if (normalizedQuestion.includes(normalizedTitle)) {
+        const score = normalizedTitle.length + 1000;
+
+        if (score > bestScore) {
+          bestMatch = event;
+          bestScore = score;
+        }
+
+        continue;
+      }
+
+      const titleWords = normalizedTitle.split(" ").filter(Boolean);
+      const matchedWords = titleWords.filter((word) =>
+        normalizedQuestion.includes(word)
+      ).length;
+
+      if (matchedWords >= 3 && matchedWords > bestScore) {
+        bestMatch = event;
+        bestScore = matchedWords;
+      }
+    }
+
+    return bestMatch;
+  } catch (error: any) {
+    console.error("Referenced event lookup failed:", error.message);
+    return null;
+  }
+}
+
+async function retrieveEventStatsFromSupabase(params: {
+  parsedQuery: ParsedQuery;
+  event: StoredEventRow;
+}): Promise<RetrievedStatRow[] | null> {
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const requestedPlayers = getRequestedPlayers(params.parsedQuery);
+    const metricColumn = getEventStatMetricColumn(params.parsedQuery.metric);
+    const teamFilter = params.parsedQuery.filters.team?.trim();
+    const minRounds = params.parsedQuery.filters.minRounds;
+
+    let query = supabase
+      .from("event_player_stats")
+      .select(
+        "id, player_name, team_name, agents, rounds_played, rating, average_combat_score, kill_deaths, kill_assists_survived_traded, average_damage_per_round, kills_per_round, assists_per_round, first_kills_per_round, first_deaths_per_round, headshot_percentage, clutch_success_percentage"
+      )
+      .eq("event_id", params.event.id)
+      .order(metricColumn, { ascending: false });
+
+    if (teamFilter) {
+      query = query.ilike("team_name", `%${teamFilter}%`);
+    }
+
+    if (typeof minRounds === "number") {
+      query = query.gte("rounds_played", minRounds);
+    }
+
+    if (requestedPlayers.length === 1) {
+      query = query.ilike("player_name", `%${requestedPlayers[0]}%`);
+    } else if (requestedPlayers.length > 1) {
+      const orFilters = requestedPlayers
+        .map((player) => `player_name.ilike.%${player}%`)
+        .join(",");
+      query = query.or(orFilters);
+    } else {
+      query = query.limit(50);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Event stats retrieve error:", error.message);
+      return null;
+    }
+
+    const mappedRows = ((data ?? []) as EventPlayerStatsRow[]).map((row) =>
+      mapEventPlayerStatsRow(row, params.event.title)
+    );
+
+    return applyLocalFilters(mappedRows, params.parsedQuery);
+  } catch (error: any) {
+    console.error("Event stats storage lookup failed:", error.message);
+    return null;
+  }
+}
+
+async function retrieveEventMatchesFromSupabase(event: StoredEventRow) {
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const { data, error } = await supabase
+      .from("matches")
+      .select(
+        "vlr_match_id, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, status, scheduled_at, date_label, match_url"
+      )
+      .eq("event_id", event.id)
+      .order("scheduled_at", { ascending: true, nullsFirst: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Event match lookup error:", error.message);
+      return [];
+    }
+
+    return ((data ?? []) as StoredMatchRow[]).map((row) => ({
+      vlrMatchId: row.vlr_match_id,
+      eventTitle: row.event_title,
+      eventSeries: row.event_series,
+      team1: row.team_1_name,
+      team2: row.team_2_name,
+      score1: row.team_1_score,
+      score2: row.team_2_score,
+      status: row.status,
+      scheduledAt: row.scheduled_at,
+      dateLabel: row.date_label,
+      matchUrl: row.match_url,
+    }));
+  } catch (error: any) {
+    console.error("Event match storage lookup failed:", error.message);
+    return [];
+  }
+}
+
+function isEventContextQuestion(question: string) {
+  return /\b(event|tournament|schedule|matches?|upcoming|live|when|date|prize|region|status)\b/i.test(
+    question
+  );
+}
+
 export async function retrieveStats(
   parsedQuery: ParsedQuery
 ): Promise<RetrievedStatsResult> {
@@ -388,6 +670,49 @@ export async function retrieveStats(
   const eventGroupId = parsedQuery.filters.eventGroupId ?? null;
   const metricSortKey = getMetricSortKey(parsedQuery.metric);
   const canUseMockFallback = process.env.NODE_ENV !== "production";
+  const referencedEvent = await findReferencedEvent(parsedQuery.normalizedQuestion);
+
+  if (referencedEvent) {
+    const [eventRows, eventMatches] = await Promise.all([
+      retrieveEventStatsFromSupabase({
+        parsedQuery,
+        event: referencedEvent,
+      }),
+      isEventContextQuestion(parsedQuery.normalizedQuestion)
+        ? retrieveEventMatchesFromSupabase(referencedEvent)
+        : Promise.resolve([]),
+    ]);
+
+    if (eventRows !== null) {
+      const sortedRows = [...eventRows].sort(
+        (a, b) => Number(b[metricSortKey]) - Number(a[metricSortKey])
+      );
+
+      return {
+        rows: sortedRows.slice(0, 10),
+        retrievalMeta: {
+          source: "event_storage",
+          appliedRegion: region,
+          appliedTimespanDays: timespanDays,
+          appliedEventGroupId: eventGroupId,
+          appliedEventName: referencedEvent.title,
+          rowCount: eventRows.length,
+        },
+        contextData: {
+          event: {
+            id: referencedEvent.id,
+            vlrEventId: referencedEvent.vlr_event_id,
+            title: referencedEvent.title,
+            status: referencedEvent.status,
+            region: referencedEvent.region,
+            dates: referencedEvent.dates,
+            prize: referencedEvent.prize,
+          },
+          matches: eventMatches,
+        },
+      };
+    }
+  }
 
   const supabaseRows = await retrieveStatsFromSupabase(parsedQuery);
 
@@ -410,7 +735,22 @@ export async function retrieveStats(
       appliedRegion: region,
       appliedTimespanDays: timespanDays,
       appliedEventGroupId: eventGroupId,
+      appliedEventName: referencedEvent?.title ?? null,
       rowCount: rows.length,
+    },
+    contextData: {
+      event: referencedEvent
+        ? {
+            id: referencedEvent.id,
+            vlrEventId: referencedEvent.vlr_event_id,
+            title: referencedEvent.title,
+            status: referencedEvent.status,
+            region: referencedEvent.region,
+            dates: referencedEvent.dates,
+            prize: referencedEvent.prize,
+          }
+        : null,
+      matches: [],
     },
   };
 }

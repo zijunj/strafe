@@ -30,8 +30,8 @@ export default function HomePage() {
             <News newsView="featured" />
           </div>
 
-          <div className="content-rise stagger-3 card-elevated relative">
-            <div className="relative max-w-7xl">
+          <div className="content-rise stagger-3 relative">
+            <div className="relative">
               <Tournaments pageView="home" tournamentView="ongoing" />
             </div>
           </div>

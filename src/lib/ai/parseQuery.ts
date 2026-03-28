@@ -115,9 +115,13 @@ const eventGroupMatchers: Array<{
 
 const invalidPlayerTokens = new Set([
   "in",
+  "at",
+  "on",
   "for",
   "by",
   "with",
+  "during",
+  "within",
   "from",
   "of",
   "the",

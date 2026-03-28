@@ -32,6 +32,9 @@ ${question}
 Parsed query:
 ${JSON.stringify(parsedQuery, null, 2)}
 
+Retrieved context:
+${JSON.stringify(retrievedStats.contextData, null, 2)}
+
 Retrieved data:
 ${JSON.stringify(retrievedStats.rows, null, 2)}
 `;
@@ -64,6 +67,7 @@ ${JSON.stringify(retrievedStats.rows, null, 2)}
         parsedQuery,
         supportingData: retrievedStats.rows,
         retrievalMeta: retrievedStats.retrievalMeta,
+        contextData: retrievedStats.contextData,
       })
     );
   } catch (error: any) {

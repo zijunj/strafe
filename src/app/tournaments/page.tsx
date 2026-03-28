@@ -1,12 +1,23 @@
 "use client";
 
 import Tournaments from "@/components/Tournaments";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function TournamentPage() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const [tournamentView, setTournamentView] = useState<"ongoing" | "upcoming">(
     "ongoing"
   );
+
+  useEffect(() => {
+    if (tabParam === "upcoming") {
+      setTournamentView("upcoming");
+    } else {
+      setTournamentView("ongoing");
+    }
+  }, [tabParam]);
 
   return (
     <div className="page-shell">

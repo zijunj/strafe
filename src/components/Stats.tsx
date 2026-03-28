@@ -50,6 +50,20 @@ const columns = [
 
 type ColumnKey = (typeof columns)[number]["key"];
 
+const agentImageMap: Record<string, string> = {
+  "kay/o": "kayo",
+  kayo: "kayo",
+};
+
+function getAgentImageSrc(agent: string) {
+  const normalized = agent.toLowerCase().trim();
+  const fileName =
+    agentImageMap[normalized] ??
+    normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+  return `/agents/vlr/${fileName}.png`;
+}
+
 export default function Stats({ filters }: StatsProps) {
   const [highlightedColumn, setHighlightedColumn] =
     useState<ColumnKey>("rating");
@@ -135,7 +149,26 @@ export default function Stats({ filters }: StatsProps) {
                   </span>
                 </td>
                 <td className={`text-center ${getCellClasses("agents")}`}>
-                  {item.agents?.join(", ") || "-"}
+                  {item.agents?.length ? (
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      {item.agents.map((agent) => (
+                        <div
+                          key={`${item.player}-${agent}`}
+                          className="relative h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/5"
+                          title={agent}
+                          aria-label={agent}
+                        >
+                          <img
+                            src={getAgentImageSrc(agent)}
+                            alt={agent}
+                            className="h-full w-full object-contain object-center"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    "-"
+                  )}
                 </td>
                 <td
                   className={`text-center ${getCellClasses("rounds_played")}`}

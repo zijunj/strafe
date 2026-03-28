@@ -1,5 +1,19 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+
+function getRequestUrl(url: string) {
+  if (url.startsWith("/api/")) {
+    return url;
+  }
+
+  if (url.startsWith("storage/")) {
+    return `/api/${url}`;
+  }
+
+  const encodedEndpoint = encodeURIComponent(url);
+  return `/api/proxy?endpoint=${encodedEndpoint}`;
+}
+
 export default function useValorantApiWithCache<T>({
   key,
   url,
@@ -22,8 +36,7 @@ export default function useValorantApiWithCache<T>({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const encodedEndpoint = encodeURIComponent(url);
-        const res = await axios.get(`/api/proxy?endpoint=${encodedEndpoint}`);
+        const res = await axios.get(getRequestUrl(url));
         const result = res.data;
         setData(parse ? parse(result) : result);
         localStorage.setItem(key, JSON.stringify(result));

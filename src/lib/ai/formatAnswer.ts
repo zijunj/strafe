@@ -16,6 +16,7 @@ export interface AIFormattedResponse {
   parsedQuery: ParsedQuery;
   supportingData: RetrievedStatRow[];
   retrievalMeta: RetrievedStatsResult["retrievalMeta"];
+  contextData: RetrievedStatsResult["contextData"];
   uiHints: AIResponseUIHints;
 }
 
@@ -91,12 +92,14 @@ export function formatAnswer(params: {
   parsedQuery: ParsedQuery;
   supportingData: RetrievedStatRow[];
   retrievalMeta: RetrievedStatsResult["retrievalMeta"];
+  contextData: RetrievedStatsResult["contextData"];
 }): AIFormattedResponse {
   return {
     answer: params.answer.trim(),
     parsedQuery: params.parsedQuery,
     supportingData: params.supportingData,
     retrievalMeta: params.retrievalMeta,
+    contextData: params.contextData,
     uiHints: buildUIHints(params),
   };
 }

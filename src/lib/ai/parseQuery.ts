@@ -99,20 +99,6 @@ const timespanMatchers: Array<{
   { days: 90, patterns: [/90 days/i, /last 3 months/i] },
 ];
 
-const eventGroupMatchers: Array<{
-  eventGroupId: number;
-  patterns: RegExp[];
-}> = [
-  {
-    eventGroupId: 86,
-    patterns: [
-      /\bvalorant champions tour 2026\b/i,
-      /\bvct 2026\b/i,
-      /\bchampions tour 2026\b/i,
-    ],
-  },
-];
-
 const invalidPlayerTokens = new Set([
   "in",
   "at",
@@ -142,6 +128,13 @@ const invalidPlayerTokens = new Set([
   "did",
   "has",
   "team",
+  "vct",
+  "event",
+  "events",
+  "match",
+  "matches",
+  "schedule",
+  "tournament",
 ]);
 
 const validAgents = [
@@ -225,6 +218,12 @@ function parseTeam(question: string): string | undefined {
   return teamMatch?.[1];
 }
 
+function isEventScheduleQuestion(question: string) {
+  return /\b(event|events|tournament|tournaments|schedule|matches?|upcoming|live|when|date|prize|status|vct|champions tour)\b/i.test(
+    question
+  );
+}
+
 export function parseQuery(question: string): ParsedQuery {
   const normalizedQuestion = question.trim().replace(/\s+/g, " ");
 
@@ -241,10 +240,8 @@ export function parseQuery(question: string): ParsedQuery {
   const matchedTimespan = timespanMatchers.find(({ patterns }) =>
     patterns.some((pattern) => pattern.test(normalizedQuestion))
   )?.days;
-  const matchedEventGroupId =
-    eventGroupMatchers.find(({ patterns }) =>
-      patterns.some((pattern) => pattern.test(normalizedQuestion))
-    )?.eventGroupId ?? null;
+  const matchedEventGroupId = null;
+  const eventScheduleQuestion = isEventScheduleQuestion(normalizedQuestion);
 
   const compareMatch = normalizedQuestion.match(
     /compare\s+([a-z0-9._-]+)\s+and\s+([a-z0-9._-]+)/i
@@ -253,9 +250,10 @@ export function parseQuery(question: string): ParsedQuery {
     /\b([a-z0-9._-]+)\s+(?:vs|versus)\s+([a-z0-9._-]+)\b/i
   );
 
-  const playerMatch =
-    normalizedQuestion.match(/\bfor\s+([a-z0-9._-]+)\b/i) ||
-    normalizedQuestion.match(/\bplayer\s+([a-z0-9._-]+)\b/i);
+  const playerMatch = eventScheduleQuestion
+    ? normalizedQuestion.match(/\bplayer\s+([a-z0-9._-]+)\b/i)
+    : normalizedQuestion.match(/\bfor\s+([a-z0-9._-]+)\b/i) ||
+      normalizedQuestion.match(/\bplayer\s+([a-z0-9._-]+)\b/i);
 
   const leadingNameMatch = normalizedQuestion.match(
     /^([a-z0-9._-]+)\s+(agents?|rating|acs|k\/d|kd|adr|rounds?|kills?\s+per\s+round|assists?\s+per\s+round|first\s+kills?\s+per\s+round|first\s+deaths?\s+per\s+round|headshot|clutch|kast)\b/i
@@ -307,6 +305,8 @@ export function parseQuery(question: string): ParsedQuery {
   const team = parseTeam(normalizedQuestion);
   const agent = parseAgent(normalizedQuestion);
   const minRounds = parseMinRounds(normalizedQuestion);
+  const defaultTimespan =
+    matchedTimespan ?? (comparisonPlayers.length > 0 ? "all" : 30);
 
   return {
     rawQuestion: question,
@@ -315,14 +315,16 @@ export function parseQuery(question: string): ParsedQuery {
       comparisonPlayers.length > 1 ? comparisonPlayers : undefined,
     metric: matchedMetric,
     entity:
-      comparisonPlayers.length > 0 || inferredPlayer
+      eventScheduleQuestion
+        ? "match"
+        : comparisonPlayers.length > 0 || inferredPlayer
         ? "player"
         : team
           ? "team"
         : "general",
     filters: {
       region: matchedRegion,
-      timespanDays: matchedTimespan ?? 30,
+      timespanDays: defaultTimespan,
       eventGroupId: matchedEventGroupId,
       player: inferredPlayer,
       agent,

@@ -236,6 +236,97 @@ function normalizeForSearch(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function getStoredRegions(region?: ParsedQuery["filters"]["region"]): string[] {
+  switch (region) {
+    case "emea":
+      return ["emea", "eu"];
+    case "global":
+    case undefined:
+      return [];
+    default:
+      return [region];
+  }
+}
+
+function getEventSearchPhrases(question: string): string[] {
+  const normalizedQuestion = normalizeForSearch(question);
+  const specificPhrases: string[] = [];
+  const genericPhrases: string[] = [];
+  const regions = [
+    { key: "emea", aliases: ["emea"] },
+    { key: "americas", aliases: ["americas"] },
+    { key: "na", aliases: ["na", "north america"] },
+    { key: "pacific", aliases: ["pacific", "asia pacific"] },
+    { key: "br", aliases: ["br", "brazil"] },
+  ] as const;
+
+  if (normalizedQuestion.includes("vct 2026")) {
+    for (const region of regions) {
+      if (region.aliases.some((alias) => normalizedQuestion.includes(alias))) {
+        specificPhrases.push(`vct 2026 ${region.key}`);
+        specificPhrases.push(`valorant champions tour 2026 ${region.key}`);
+        specificPhrases.push(`champions tour 2026 ${region.key}`);
+      }
+    }
+
+    genericPhrases.push("vct 2026");
+    genericPhrases.push("valorant champions tour 2026");
+    genericPhrases.push("champions tour 2026");
+  }
+
+  return [...specificPhrases, ...genericPhrases];
+}
+
+function getEventRegionHints(question: string) {
+  const normalizedQuestion = normalizeForSearch(question);
+
+  if (normalizedQuestion.includes("americas")) {
+    return {
+      titleAliases: ["americas"],
+      regionCodes: ["us", "americas", "na"],
+    };
+  }
+
+  if (normalizedQuestion.includes("emea")) {
+    return {
+      titleAliases: ["emea"],
+      regionCodes: ["de", "emea", "eu"],
+    };
+  }
+
+  if (
+    normalizedQuestion.includes("pacific") ||
+    normalizedQuestion.includes("asia pacific")
+  ) {
+    return {
+      titleAliases: ["pacific"],
+      regionCodes: ["ap", "pacific"],
+    };
+  }
+
+  if (
+    normalizedQuestion.includes("north america") ||
+    /\bna\b/.test(normalizedQuestion)
+  ) {
+    return {
+      titleAliases: ["north america", "na"],
+      regionCodes: ["us", "na"],
+    };
+  }
+
+  if (
+    normalizedQuestion.includes("brazil") ||
+    /\bbr\b/.test(normalizedQuestion)
+  ) {
+    return {
+      titleAliases: ["brazil", "br"],
+      regionCodes: ["br"],
+    };
+  }
+
+  return null;
+}
+
 function mapSupabaseRow(row: AggregatedPlayerStatsRow): RetrievedStatRow {
   return {
     id: row.id,
@@ -288,6 +379,7 @@ function applyLocalFilters(
   parsedQuery: ParsedQuery
 ): RetrievedStatRow[] {
   const region = parsedQuery.filters.region;
+  const storedRegions = getStoredRegions(region);
   const playerFilters = getRequestedPlayers(parsedQuery);
   const teamFilter = parsedQuery.filters.team?.toLowerCase();
   const agentFilter = parsedQuery.filters.agent?.toLowerCase();
@@ -295,9 +387,9 @@ function applyLocalFilters(
 
   let filteredRows = rows;
 
-  if (region && region !== "global") {
+  if (storedRegions.length > 0) {
     filteredRows = filteredRows.filter(
-      (row) => row.region.toLowerCase() === region
+      (row) => storedRegions.includes(row.region.toLowerCase())
     );
   }
 
@@ -441,6 +533,7 @@ async function retrieveStatsFromSupabase(
   try {
     const supabase = createServiceRoleSupabaseClient();
     const region = parsedQuery.filters.region;
+    const storedRegions = getStoredRegions(region);
     const timespanDays = parsedQuery.filters.timespanDays ?? 30;
     const eventGroupId = parsedQuery.filters.eventGroupId ?? null;
     const requestedPlayers = getRequestedPlayers(parsedQuery);
@@ -461,8 +554,10 @@ async function retrieveStatsFromSupabase(
       query = query.in("timespan_days", [timespanDays, String(timespanDays)]);
     }
 
-    if (region && region !== "global") {
-      query = query.eq("region", region);
+    if (storedRegions.length === 1) {
+      query = query.eq("region", storedRegions[0]);
+    } else if (storedRegions.length > 1) {
+      query = query.in("region", storedRegions);
     }
 
     query =
@@ -525,18 +620,55 @@ async function findReferencedEvent(question: string) {
     }
 
     const normalizedQuestion = normalizeForSearch(question);
+    const prioritizedPhrases = getEventSearchPhrases(question);
+    const regionHints = getEventRegionHints(question);
     let bestMatch: StoredEventRow | null = null;
     let bestScore = 0;
 
     for (const event of (data ?? []) as StoredEventRow[]) {
       const normalizedTitle = normalizeForSearch(event.title);
+      const normalizedRegion = normalizeForSearch(event.region ?? "");
 
       if (!normalizedTitle) {
         continue;
       }
 
+      let bonusScore = 0;
+
+      if (regionHints) {
+        if (
+          regionHints.titleAliases.some((alias) =>
+            normalizedTitle.includes(normalizeForSearch(alias))
+          )
+        ) {
+          bonusScore += 300;
+        }
+
+        if (
+          normalizedRegion &&
+          regionHints.regionCodes.some((code) => normalizedRegion === code)
+        ) {
+          bonusScore += 50;
+        }
+      }
+
+      const matchedPhrase = prioritizedPhrases.find((phrase) =>
+        normalizedTitle.includes(phrase)
+      );
+
+      if (matchedPhrase) {
+        const score = matchedPhrase.length + 5000 + bonusScore;
+
+        if (score > bestScore) {
+          bestMatch = event;
+          bestScore = score;
+        }
+
+        continue;
+      }
+
       if (normalizedQuestion.includes(normalizedTitle)) {
-        const score = normalizedTitle.length + 1000;
+        const score = normalizedTitle.length + 1000 + bonusScore;
 
         if (score > bestScore) {
           bestMatch = event;
@@ -550,10 +682,15 @@ async function findReferencedEvent(question: string) {
       const matchedWords = titleWords.filter((word) =>
         normalizedQuestion.includes(word)
       ).length;
+      const titleCoverage = matchedWords / titleWords.length;
 
-      if (matchedWords >= 3 && matchedWords > bestScore) {
+      if (
+        matchedWords >= 3 &&
+        titleCoverage >= 0.6 &&
+        matchedWords + bonusScore > bestScore
+      ) {
         bestMatch = event;
-        bestScore = matchedWords;
+        bestScore = matchedWords + bonusScore;
       }
     }
 

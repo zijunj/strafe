@@ -26,7 +26,6 @@ export default function LayoutShell({
 
       <header className="shell-fade-in backdrop-blur-xl border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)]/90">
         <div className="container-wide pt-4 flex justify-between items-center">
-          {/* Left Logo */}
           <div className="flex items-center gap-2">
             <img src="/strafeLogo.png" alt="strafeLogo" className="h-6" />
             <span className="text-2xl font-bold text-[var(--color-text-primary)]">
@@ -34,10 +33,8 @@ export default function LayoutShell({
             </span>
           </div>
 
-          {/* Right User Section */}
           {globalUser ? (
             <div className="relative group inline-block">
-              {/* Trigger */}
               <div className="flex items-center gap-3 cursor-pointer">
                 <div className="flex flex-col text-right">
                   <span className="text-[var(--color-primary)] font-bold">
@@ -54,7 +51,6 @@ export default function LayoutShell({
                 />
               </div>
 
-              {/* Dropdown */}
               <div className="absolute right-0 mt-2 w-40 bg-[var(--color-bg-card)] border border-[var(--color-border-default)] rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 overflow-hidden">
                 <ul className="text-sm">
                   <li className="px-4 py-1 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-elevated)] cursor-pointer transition-colors">
@@ -79,20 +75,17 @@ export default function LayoutShell({
           )}
         </div>
 
-        {/* NavBar below */}
         <div className="mt-4 bg-[var(--color-bg-surface-elevated)]/95">
           <NavBar />
         </div>
       </header>
 
-      <main>
-        <div className="hero-reveal relative h-128 w-full overflow-hidden">
-          <div className="absolute inset-0 bg-[url('/valorant.png')] bg-top bg-center bg-no-repeat" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[var(--color-bg-body)]" />
+      <main className="shell-main">
+        <div className="hero-reveal shell-hero">
+          <div className="shell-hero-image" />
+          <div className="shell-hero-overlay" />
         </div>
-        <div className="content-rise stagger-1 relative -mt-110 z-10 max-w-7xl mx-auto space-y-4">
-          {children}
-        </div>
+        <div className="content-rise stagger-1 shell-content">{children}</div>
       </main>
 
       <footer className="shell-fade-in stagger-2 bg-[var(--color-bg-page)] text-[var(--color-text-primary)] border-t border-[var(--color-border-subtle)] mt-16">

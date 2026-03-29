@@ -26,8 +26,8 @@ export default function FilterPanel({
   const [stagedFilters, setStagedFilters] = useState(filters);
 
   return (
-    <div className="card-elevated p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="card-elevated p-4">
+      <div className="mb-3 flex items-start justify-between gap-4">
         <div>
           <p className="section-label mb-2">Filter Panel</p>
           <h2 className="card-title">Narrow down the player pool</h2>
@@ -205,7 +205,7 @@ export default function FilterPanel({
             onApply(
               stagedFilters.region,
               stagedFilters.timespan,
-              stagedFilters.minRating
+              stagedFilters.minRating,
             );
           }}
         >

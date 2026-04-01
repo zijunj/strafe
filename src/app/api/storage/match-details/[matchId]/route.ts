@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   readStoredMatchDetailsByVlrMatchId,
+  syncStoredMatchDetailByVlrMatchId,
   syncTournamentMatchStorage,
 } from "@/lib/vlr-storage/sync";
 
@@ -20,15 +21,51 @@ export async function GET(
     const shouldSync = url.searchParams.get("sync") === "1";
 
     if (shouldSync) {
-      await syncTournamentMatchStorage({ matchIds: [vlrMatchId] });
+      const existingMatch = await readStoredMatchDetailsByVlrMatchId(vlrMatchId);
+
+      if (existingMatch) {
+        const synced = await syncStoredMatchDetailByVlrMatchId(vlrMatchId);
+
+        if (!synced) {
+          return NextResponse.json(
+            {
+              error:
+                "Failed to sync stored match details from the upstream match detail API.",
+            },
+            { status: 502 }
+          );
+        }
+      } else {
+        await syncTournamentMatchStorage({
+          matchIds: [vlrMatchId],
+          syncEvents: true,
+          syncMatches: true,
+          syncEventPlayerStats: false,
+          syncMatchDetails: true,
+        });
+      }
     }
 
     const data = await readStoredMatchDetailsByVlrMatchId(vlrMatchId);
+    const nestedMatchDetails =
+      data?.match_details && Array.isArray(data.match_details)
+        ? data.match_details[0]
+        : data?.match_details;
 
     if (!data) {
       return NextResponse.json(
         { error: "Stored match details not found." },
         { status: 404 }
+      );
+    }
+
+    if (shouldSync && !nestedMatchDetails) {
+      return NextResponse.json(
+        {
+          error:
+            "Match row exists, but match_details was not written after sync.",
+        },
+        { status: 502 }
       );
     }
 

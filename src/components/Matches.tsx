@@ -1,10 +1,9 @@
 "use client";
 
 import useValorantApiWithCache from "../app/api/Valorant";
-import React from "react";
 import { getMatchStartTime } from "../app/utils/apiFunctions";
 import Link from "next/link";
-import slugify from "@/app/utils/IdFunctions";
+import { useEffect, useState } from "react";
 
 interface MatchProps {
   pageView: string;
@@ -17,6 +16,9 @@ interface MatchItem {
   match_page: string;
   team1: string;
   team2: string;
+  team1_logo?: string | null;
+  team2_logo?: string | null;
+  tournament_logo?: string | null;
   unix_timestamp: string;
   time_until_match: string;
 }
@@ -31,20 +33,36 @@ interface TournamentItem {
   url_path: string;
 }
 
+const MATCHES_PAGE_BATCH_SIZE = 12;
+
 export default function Matches({ pageView }: MatchProps) {
+  const matchesUrl = "storage/matches?status=upcoming&backgroundSync=0";
+  const tournamentsUrl = "storage/events?backgroundSync=0";
+
   const { data: matchData = [], loading: matchesLoading } =
     useValorantApiWithCache<MatchItem[]>({
       key: "upcomingMatches-storage",
-      url: "storage/matches?status=upcoming",
+      url: matchesUrl,
       parse: (res) => res.data.segments,
     });
 
   const { data: tournamentData = [], loading: tournamentsLoading } =
     useValorantApiWithCache<TournamentItem[]>({
       key: "tournaments-storage",
-      url: "storage/events",
+      url: tournamentsUrl,
       parse: (res) => res.data.segments,
     });
+  const [visibleCount, setVisibleCount] = useState(MATCHES_PAGE_BATCH_SIZE);
+  const visibleMatchData =
+    pageView === "match" ? matchData.slice(0, visibleCount) : matchData;
+
+  useEffect(() => {
+    if (pageView !== "match") {
+      return;
+    }
+
+    setVisibleCount(MATCHES_PAGE_BATCH_SIZE);
+  }, [matchData, pageView]);
 
   if (matchesLoading || tournamentsLoading) {
     return (
@@ -59,7 +77,7 @@ export default function Matches({ pageView }: MatchProps) {
       {pageView === "home" && (
         <section className="max-w-7xl mx-auto">
           {Object.entries(
-            (matchData ?? [])
+            (visibleMatchData ?? [])
               .sort(
                 (a, b) =>
                   new Date(a.unix_timestamp).getTime() -
@@ -79,6 +97,11 @@ export default function Matches({ pageView }: MatchProps) {
             <div key={i}>
               {/* Tournament Header */}
               <div className="flex items-center px-3 py-2 bg-[var(--color-bg-surface-elevated)] border-b border-[var(--color-border-subtle)]">
+                <img
+                  src={matches[0]?.tournament_logo || "/valorantLogo.png"}
+                  alt={tournament}
+                  className="w-4 h-4 mr-2 object-contain opacity-80"
+                />
                 <span className="label text-[var(--color-text-primary)] truncate">
                   {tournament}
                 </span>
@@ -108,14 +131,28 @@ export default function Matches({ pageView }: MatchProps) {
                     {/* Center: Teams */}
                     <div className="flex-1 py-2 px-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
-                          {item.team1}
-                        </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <img
+                            src={item.team1_logo || "/valorantLogo.png"}
+                            alt={item.team1 || "Team"}
+                            className="h-5 w-5 rounded-full object-contain flex-shrink-0"
+                          />
+                          <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
+                            {item.team1}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
-                          {item.team2}
-                        </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <img
+                            src={item.team2_logo || "/valorantLogo.png"}
+                            alt={item.team2 || "Team"}
+                            className="h-5 w-5 rounded-full object-contain flex-shrink-0"
+                          />
+                          <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
+                            {item.team2}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -129,7 +166,7 @@ export default function Matches({ pageView }: MatchProps) {
       {pageView === "match" && (
         <section>
           {Object.entries(
-            (matchData ?? [])
+            (visibleMatchData ?? [])
               .sort(
                 (a, b) =>
                   new Date(a.unix_timestamp).getTime() -
@@ -161,8 +198,8 @@ export default function Matches({ pageView }: MatchProps) {
               <div className="hidden sm:flex justify-between items-center px-4 py-2 text-xs uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-bg-card)] border-b border-[var(--color-border-subtle)]">
                 <div className="w-20 text-center">Time</div>
                 <div className="flex-1 text-left pl-2">Teams</div>
-                <div className="min-w-[34%] text-right">Tournament</div>
-                <div className="min-w-[20%] text-right">Region</div>
+                <div className="min-w-[34%] text-center">Tournament</div>
+                <div className="min-w-[15%] text-right">Region</div>
                 <div className="w-10"></div>
               </div>
 
@@ -204,10 +241,22 @@ export default function Matches({ pageView }: MatchProps) {
                       {/* Teams */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
+                          <img
+                            src={item.team1_logo || "/valorantLogo.png"}
+                            alt={item.team1 || "Team"}
+                            className="h-7 w-7 rounded-full object-contain flex-shrink-0"
+                          />
                           <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
                             {item.team1}
                           </span>
-                          <span className="text-sm text-[var(--color-text-muted)]">vs</span>
+                          <span className="text-sm text-[var(--color-text-muted)]">
+                            vs
+                          </span>
+                          <img
+                            src={item.team2_logo || "/valorantLogo.png"}
+                            alt={item.team2 || "Team"}
+                            className="h-7 w-7 rounded-full object-contain flex-shrink-0"
+                          />
                           <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
                             {item.team2}
                           </span>
@@ -215,17 +264,26 @@ export default function Matches({ pageView }: MatchProps) {
                       </div>
 
                       {/* Tournament */}
-                      <div className="min-w-[34%] text-right">
-                        <div className="text-[15px] font-semibold text-[var(--color-text-secondary)] truncate">
-                          {item.match_event}
-                        </div>
-                        <div className="text-sm text-[var(--color-text-muted)] truncate">
-                          {item.match_series}
+                      <div className="min-w-[34%] flex justify-end">
+                        <div className="flex items-center justify-end gap-3 max-w-full">
+                          <div className="min-w-0 text-right">
+                            <div className="text-[15px] font-semibold text-[var(--color-text-secondary)] truncate">
+                              {item.match_event}
+                            </div>
+                            <div className="text-sm text-[var(--color-text-muted)] truncate">
+                              {item.match_series}
+                            </div>
+                          </div>
+                          <img
+                            src={item.tournament_logo || "/valorantLogo.png"}
+                            alt={item.match_event || "Tournament"}
+                            className="w-10 h-10 object-contain opacity-90 flex-shrink-0"
+                          />
                         </div>
                       </div>
 
                       {/* Region */}
-                      <div className="min-w-[20%] text-right">
+                      <div className="min-w-[15%] text-right">
                         <span className="text-sm text-[var(--color-text-muted)] truncate">
                           {tournament?.region || ""}
                         </span>
@@ -233,11 +291,13 @@ export default function Matches({ pageView }: MatchProps) {
 
                       {/* Logo */}
                       <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center">
-                        <img
-                          src="/valorantLogo.png"
-                          alt="Valorant Logo"
-                          className="w-10 h-10 object-contain opacity-65 grayscale brightness-90 contrast-125"
-                        />
+                        <div className="flex items-center -space-x-2">
+                          <img
+                            src="/valorantLogo.png"
+                            alt="Valorant Logo"
+                            className="w-10 h-10 object-contain opacity-65 grayscale brightness-90 contrast-125"
+                          />
+                        </div>
                       </div>
                     </div>
                   </Link>
@@ -245,6 +305,22 @@ export default function Matches({ pageView }: MatchProps) {
               })}
             </div>
           ))}
+
+          {visibleCount < matchData.length && (
+            <div className="flex justify-center py-4">
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleCount((current) =>
+                    Math.min(current + MATCHES_PAGE_BATCH_SIZE, matchData.length)
+                  )
+                }
+                className="btn-tab"
+              >
+                Load More Matches
+              </button>
+            </div>
+          )}
         </section>
       )}
     </>

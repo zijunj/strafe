@@ -4,6 +4,20 @@ import { syncTournamentMatchStorage } from "@/lib/vlr-storage/sync";
 
 const MATCHES_STALE_MINUTES = 15;
 
+interface StoredMatchDetailsPayload {
+  teams?: Array<{
+    logo?: string | null;
+  }>;
+}
+
+interface StoredMatchDetailsRow {
+  payload?: StoredMatchDetailsPayload | null;
+}
+
+interface StoredEventRow {
+  thumb?: string | null;
+}
+
 function isStale(lastSyncedAt: string | null | undefined, staleMinutes: number) {
   if (!lastSyncedAt) {
     return true;
@@ -18,6 +32,17 @@ function isStale(lastSyncedAt: string | null | undefined, staleMinutes: number) 
   return Date.now() - lastSyncedMs > staleMinutes * 60 * 1000;
 }
 
+function refreshMatchesInBackground(syncMatchDetails: boolean) {
+  void syncTournamentMatchStorage({
+    syncEvents: true,
+    syncMatches: true,
+    syncEventPlayerStats: false,
+    syncMatchDetails,
+  }).catch((error) => {
+    console.error("Background matches sync failed:", error);
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = createServiceRoleSupabaseClient();
@@ -26,6 +51,10 @@ export async function GET(req: NextRequest) {
     const status = req.nextUrl.searchParams.get("status");
     const limit = Number(req.nextUrl.searchParams.get("limit") || "100");
     const forceRefresh = req.nextUrl.searchParams.get("refresh") === "1";
+    const backgroundSyncEnabled =
+      req.nextUrl.searchParams.get("backgroundSync") !== "0";
+    const syncDetailsInBackground =
+      req.nextUrl.searchParams.get("syncDetails") === "1";
 
     const { data: freshnessRow, error: freshnessError } = await supabase
       .from("matches")
@@ -39,23 +68,17 @@ export async function GET(req: NextRequest) {
     }
 
     if (
-      forceRefresh ||
-      isStale(freshnessRow?.last_synced_at, MATCHES_STALE_MINUTES)
+      backgroundSyncEnabled &&
+      (forceRefresh || isStale(freshnessRow?.last_synced_at, MATCHES_STALE_MINUTES))
     ) {
-      await syncTournamentMatchStorage({
-        syncEvents: true,
-        syncMatches: true,
-        syncEventPlayerStats: false,
-        syncMatchDetails: false,
-      });
+      refreshMatchesInBackground(syncDetailsInBackground);
     }
 
     let query = supabase
       .from("matches")
       .select(
-        "id, vlr_match_id, event_id, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, scheduled_at, date_label, match_url, status, last_synced_at"
+        "id, vlr_match_id, event_id, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, scheduled_at, date_label, match_url, status, last_synced_at, events(thumb), match_details(payload)"
       )
-      .order("scheduled_at", { ascending: true, nullsFirst: false })
       .limit(Number.isFinite(limit) ? limit : 100);
 
     if (eventId) {
@@ -64,6 +87,18 @@ export async function GET(req: NextRequest) {
 
     if (status) {
       query = query.eq("status", status);
+    }
+
+    if (status === "completed") {
+      query = query.order("last_synced_at", {
+        ascending: false,
+        nullsFirst: false,
+      });
+    } else {
+      query = query.order("scheduled_at", {
+        ascending: true,
+        nullsFirst: false,
+      });
     }
 
     if (vlrEventId) {
@@ -90,22 +125,45 @@ export async function GET(req: NextRequest) {
       throw error;
     }
 
-    const segments = (data ?? []).map((row) => ({
-      id: row.id,
-      vlr_match_id: row.vlr_match_id,
-      event_id: row.event_id,
-      match_event: row.event_title,
-      match_series: row.event_series,
-      team1: row.team_1_name,
-      team2: row.team_2_name,
-      score1: row.team_1_score,
-      score2: row.team_2_score,
-      unix_timestamp: row.scheduled_at,
-      date_label: row.date_label,
-      match_page: row.match_url,
-      status: row.status,
-      last_synced_at: row.last_synced_at,
-    }));
+    function getNestedMatchDetails(row: {
+      match_details?: StoredMatchDetailsRow[] | StoredMatchDetailsRow | null;
+    }) {
+      return Array.isArray(row.match_details)
+        ? row.match_details[0]
+        : row.match_details;
+    }
+
+    function getNestedEvent(row: {
+      events?: StoredEventRow[] | StoredEventRow | null;
+    }) {
+      return Array.isArray(row.events) ? row.events[0] : row.events;
+    }
+
+    const segments = (data ?? []).map((row) => {
+      const matchDetails = getNestedMatchDetails(row);
+      const event = getNestedEvent(row);
+      const teams = matchDetails?.payload?.teams ?? [];
+
+      return {
+        id: row.id,
+        vlr_match_id: row.vlr_match_id,
+        event_id: row.event_id,
+        match_event: row.event_title,
+        match_series: row.event_series,
+        team1: row.team_1_name,
+        team2: row.team_2_name,
+        team1_logo: teams[0]?.logo || null,
+        team2_logo: teams[1]?.logo || null,
+        tournament_logo: event?.thumb || null,
+        score1: row.team_1_score,
+        score2: row.team_2_score,
+        unix_timestamp: row.scheduled_at,
+        date_label: row.date_label,
+        match_page: row.match_url,
+        status: row.status,
+        last_synced_at: row.last_synced_at,
+      };
+    });
 
     return NextResponse.json({ data: { segments } });
   } catch (error) {

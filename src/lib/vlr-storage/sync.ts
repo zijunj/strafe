@@ -168,6 +168,9 @@ const DEFAULT_SYNC_FLAGS = {
   syncEventPlayerStats: true,
   syncMatchDetails: true,
 } as const;
+const UPSTREAM_FETCH_TIMEOUT_MS = 15000;
+const UPSTREAM_FETCH_MAX_RETRIES = 3;
+const MATCH_DETAIL_REQUEST_DELAY_MS = 600;
 
 function getBaseUrl() {
   const baseUrl = process.env.VLR_API_BASE_URL;
@@ -179,14 +182,75 @@ function getBaseUrl() {
   return baseUrl.replace(/\/+$/, "");
 }
 
-async function fetchVlrJson<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${getBaseUrl()}${endpoint}`);
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (!response.ok) {
-    throw new Error(`Upstream VLR API request failed (${response.status}) for ${endpoint}`);
+function getRetryDelayMs(attempt: number) {
+  const baseDelay = 800 * 2 ** attempt;
+  const jitter = Math.floor(Math.random() * 400);
+  return baseDelay + jitter;
+}
+
+function shouldRetryStatus(status: number) {
+  return [403, 408, 425, 429, 500, 502, 503, 504].includes(status);
+}
+
+function getUpstreamRequestHeaders() {
+  return {
+    Accept: "application/json,text/html,application/xhtml+xml",
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+  };
+}
+
+async function fetchVlrJson<T>(endpoint: string): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= UPSTREAM_FETCH_MAX_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+        headers: getUpstreamRequestHeaders(),
+        signal: AbortSignal.timeout(UPSTREAM_FETCH_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        const status = response.status;
+        const bodyText = await response.text().catch(() => "");
+        const bodySnippet = bodyText.slice(0, 180).replace(/\s+/g, " ").trim();
+
+        console.warn(
+          `Upstream VLR API request failed (${status}) for ${endpoint}${
+            bodySnippet ? ` | body: ${bodySnippet}` : ""
+          }`
+        );
+
+        if (attempt < UPSTREAM_FETCH_MAX_RETRIES && shouldRetryStatus(status)) {
+          await sleep(getRetryDelayMs(attempt));
+          continue;
+        }
+
+        throw new Error(
+          `Upstream VLR API request failed (${status}) for ${endpoint}`
+        );
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      lastError =
+        error instanceof Error ? error : new Error("Unknown upstream fetch error");
+
+      if (attempt < UPSTREAM_FETCH_MAX_RETRIES) {
+        console.warn(
+          `Retrying upstream request for ${endpoint} after error: ${lastError.message}`
+        );
+        await sleep(getRetryDelayMs(attempt));
+        continue;
+      }
+    }
   }
 
-  return (await response.json()) as T;
+  throw lastError ?? new Error(`Upstream VLR API request failed for ${endpoint}`);
 }
 
 function parseVlrEventId(urlPath: string): number | null {
@@ -387,6 +451,64 @@ async function fetchMatchDetailsFromUpstream(vlrMatchId: number) {
   return payload.data?.segments?.[0] ?? null;
 }
 
+async function loadStoredMatchByVlrMatchId(vlrMatchId: number) {
+  const supabase = createServiceRoleSupabaseClient();
+  const { data, error } = await supabase
+    .from("matches")
+    .select("id, vlr_match_id, slug, status, last_synced_at")
+    .eq("vlr_match_id", vlrMatchId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load stored match ${vlrMatchId}: ${error.message}`);
+  }
+
+  return (data as MatchRow | null) ?? null;
+}
+
+export async function syncStoredMatchDetailByVlrMatchId(vlrMatchId: number) {
+  const supabase = createServiceRoleSupabaseClient();
+  const timestamp = new Date().toISOString();
+  const match = await loadStoredMatchByVlrMatchId(vlrMatchId);
+
+  if (!match) {
+    return false;
+  }
+
+  const detailPayload = await fetchMatchDetailsFromUpstream(vlrMatchId).catch(
+    (error) => {
+      console.warn(
+        `Failed to fetch match details for ${vlrMatchId}:`,
+        error
+      );
+      return null;
+    }
+  );
+
+  if (!detailPayload) {
+    return false;
+  }
+
+  const { error } = await supabase.from("match_details").upsert(
+    {
+      match_id: match.id,
+      status: detailPayload.status || match.status,
+      source_version: DEFAULT_MATCH_DETAILS_SOURCE_VERSION,
+      payload: detailPayload,
+      last_synced_at: timestamp,
+    },
+    { onConflict: "match_id" }
+  );
+
+  if (error) {
+    throw new Error(
+      `Failed to upsert match details for ${vlrMatchId}: ${error.message}`
+    );
+  }
+
+  return true;
+}
+
 async function syncEvents() {
   const supabase = createServiceRoleSupabaseClient();
   const upstreamEvents = await fetchEventsFromUpstream();
@@ -475,8 +597,14 @@ async function syncMatches(params: SyncTournamentMatchStorageParams) {
   ]);
 
   const eventsByTitle = new Map(events.map((event) => [event.title, event]));
+  const targetMatchIds = params.matchIds?.length
+    ? new Set(params.matchIds)
+    : null;
 
   const matchRows = upstreamMatches
+    .filter((match) =>
+      targetMatchIds ? targetMatchIds.has(match.vlr_match_id) : true
+    )
     .map((match) => {
       const event = eventsByTitle.get(match.event_title);
 
@@ -641,6 +769,10 @@ async function syncMatchDetails(params: SyncTournamentMatchStorageParams) {
   let syncedCount = 0;
 
   for (const match of matches) {
+    if (syncedCount > 0) {
+      await sleep(MATCH_DETAIL_REQUEST_DELAY_MS + Math.floor(Math.random() * 250));
+    }
+
     const detailPayload = await fetchMatchDetailsFromUpstream(match.vlr_match_id).catch(
       (error) => {
         console.warn(

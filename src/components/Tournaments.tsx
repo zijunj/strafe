@@ -73,7 +73,7 @@ function TournamentListRow({
         {getDateLabel(tournament.dates, dateMode)}
       </div>
       <div className="flex items-center gap-4 min-w-0">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/95">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg">
           <img
             src={tournament.thumb || "/valorantLogo.png"}
             alt={tournament.title}
@@ -111,17 +111,24 @@ export default function Tournaments({
   tournamentView,
   setTournamentView,
 }: TournamentProps) {
+  const tournamentsUrl =
+    pageView === "home" ? "storage/events?backgroundSync=0" : "storage/events";
+  const matchesUrl =
+    pageView === "home"
+      ? "storage/matches?status=upcoming&backgroundSync=0"
+      : "storage/matches?status=upcoming";
+
   const { data: tournamentData, loading } = useValorantApiWithCache<
     TournamentItem[]
   >({
     key: "tournaments-storage",
-    url: "storage/events",
+    url: tournamentsUrl,
     parse: (res) => res.data.segments,
   });
 
   const { data: matchData = [] } = useValorantApiWithCache<MatchItem[]>({
     key: `upcomingMatches-storage`,
-    url: `storage/matches?status=upcoming`,
+    url: matchesUrl,
     parse: (res) => res.data.segments,
   });
 
@@ -410,7 +417,7 @@ export default function Tournaments({
                       </div>
 
                       <div className="flex items-center gap-4 px-5">
-                        <div className="flex h-11 w-11 items-center justify-center bg-white/95 rounded">
+                        <div className="flex h-11 w-11 items-center justify-center rounded">
                           <img
                             src={tournament.thumb || "/valorantLogo.png"}
                             alt={tournament.title}

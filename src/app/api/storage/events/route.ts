@@ -39,12 +39,25 @@ function getStatusPriority(status: string) {
   }
 }
 
+function refreshEventsInBackground() {
+  void syncTournamentMatchStorage({
+    syncEvents: true,
+    syncMatches: true,
+    syncEventPlayerStats: false,
+    syncMatchDetails: false,
+  }).catch((error) => {
+    console.error("Background events sync failed:", error);
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = createServiceRoleSupabaseClient();
     const status = req.nextUrl.searchParams.get("status");
     const limit = Number(req.nextUrl.searchParams.get("limit") || "100");
     const forceRefresh = req.nextUrl.searchParams.get("refresh") === "1";
+    const backgroundSyncEnabled =
+      req.nextUrl.searchParams.get("backgroundSync") !== "0";
 
     const { data: freshnessRow, error: freshnessError } = await supabase
       .from("events")
@@ -58,15 +71,10 @@ export async function GET(req: NextRequest) {
     }
 
     if (
-      forceRefresh ||
-      isStale(freshnessRow?.last_synced_at, EVENTS_STALE_MINUTES)
+      backgroundSyncEnabled &&
+      (forceRefresh || isStale(freshnessRow?.last_synced_at, EVENTS_STALE_MINUTES))
     ) {
-      await syncTournamentMatchStorage({
-        syncEvents: true,
-        syncMatches: true,
-        syncEventPlayerStats: false,
-        syncMatchDetails: false,
-      });
+      refreshEventsInBackground();
     }
 
     let query = supabase

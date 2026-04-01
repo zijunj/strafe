@@ -22,8 +22,8 @@ interface NewsProps {
 
 export default function News({ newsView }: NewsProps) {
   const { data: newsData, loading } = useValorantApiWithCache<NewsItem[]>({
-    key: "news",
-    url: "news",
+    key: "news-storage",
+    url: "storage/news",
     parse: (res) => res.data?.segments || [],
   });
 
@@ -31,24 +31,41 @@ export default function News({ newsView }: NewsProps) {
 
   useEffect(() => {
     const fetchNewsImg = async () => {
-      const res = await fetch("/api/newsImg");
-      const data = await res.json();
-      setArticleImg(data.articles[0]);
+      try {
+        const res = await fetch("/api/newsImg");
+
+        if (!res.ok) {
+          return;
+        }
+
+        const data = await res.json();
+        const firstArticle = Array.isArray(data?.articles)
+          ? data.articles[0]
+          : null;
+
+        if (firstArticle?.img && firstArticle?.title) {
+          setArticleImg(firstArticle);
+        }
+      } catch (error) {
+        console.error("Failed to load news image:", error);
+      }
     };
 
     fetchNewsImg();
   }, []);
 
-  const featured = newsData.find(
-    (item) =>
-      articleImg &&
-      item.title.trim().toLowerCase() === articleImg.title.trim().toLowerCase(),
-  );
+  const featured =
+    newsData.find(
+      (item) =>
+        articleImg &&
+        item.title.trim().toLowerCase() === articleImg.title.trim().toLowerCase(),
+    ) || newsData[0];
 
   const rest = newsData.filter(
     (item) =>
-      !articleImg ||
-      item.title.trim().toLowerCase() !== articleImg.title.trim().toLowerCase(),
+      featured
+        ? item.title.trim().toLowerCase() !== featured.title.trim().toLowerCase()
+        : true,
   );
 
   if (loading) {

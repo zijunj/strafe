@@ -1,10 +1,39 @@
 import { NextResponse } from "next/server";
 import {
   readStoredMatchDetailsByVlrMatchId,
+  syncStoredMatchDetailByVlrMatchId,
   syncTournamentMatchStorage,
 } from "@/lib/vlr-storage/sync";
 
 const STALE_THRESHOLD_MINUTES = 15;
+
+interface UpstreamMatchDetailsResponse {
+  data?: {
+    segments?: Array<{
+      match_id?: string;
+      date?: string;
+      patch?: string;
+      status?: string;
+      event?: {
+        name?: string;
+        series?: string;
+        logo?: string;
+      };
+      teams?: Array<{
+        name?: string;
+        tag?: string;
+        logo?: string;
+        score?: string;
+        is_winner?: boolean;
+      }>;
+      streams?: Array<{
+        name?: string;
+        url?: string;
+      }>;
+      head_to_head?: unknown[];
+    }>;
+  };
+}
 
 function isFresh(lastSyncedAt: string | null | undefined) {
   if (!lastSyncedAt) {
@@ -15,6 +44,31 @@ function isFresh(lastSyncedAt: string | null | undefined) {
   const diffMinutes = (Date.now() - lastSynced.getTime()) / (1000 * 60);
 
   return diffMinutes < STALE_THRESHOLD_MINUTES;
+}
+
+function getBaseUrl() {
+  const baseUrl = process.env.VLR_API_BASE_URL;
+
+  if (!baseUrl) {
+    throw new Error("VLR_API_BASE_URL is not configured.");
+  }
+
+  return baseUrl.replace(/\/+$/, "");
+}
+
+async function fetchUpstreamMatchDetails(vlrMatchId: number) {
+  const response = await fetch(
+    `${getBaseUrl()}/match/details?match_id=${vlrMatchId}`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Upstream VLR API request failed (${response.status}) for match ${vlrMatchId}`
+    );
+  }
+
+  const payload = (await response.json()) as UpstreamMatchDetailsResponse;
+  return payload.data?.segments?.[0] ?? null;
 }
 
 export async function GET(
@@ -42,12 +96,35 @@ export async function GET(
         : null;
 
     if (!storedMatch || !isFresh(nestedLastSyncedAt)) {
-      await syncTournamentMatchStorage({ matchIds: [vlrMatchId] });
-      storedMatch = await readStoredMatchDetailsByVlrMatchId(vlrMatchId);
+      try {
+        if (storedMatch) {
+          await syncStoredMatchDetailByVlrMatchId(vlrMatchId);
+        } else {
+          await syncTournamentMatchStorage({
+            matchIds: [vlrMatchId],
+            syncEvents: true,
+            syncMatches: true,
+            syncEventPlayerStats: false,
+            syncMatchDetails: true,
+          });
+        }
+        storedMatch = await readStoredMatchDetailsByVlrMatchId(vlrMatchId);
+      } catch (syncError) {
+        console.warn(
+          `Match detail sync failed for ${vlrMatchId}; falling back to upstream detail API.`,
+          syncError
+        );
+      }
     }
 
     if (!storedMatch) {
-      return NextResponse.json({ error: "Match not found" }, { status: 404 });
+      const upstreamMatch = await fetchUpstreamMatchDetails(vlrMatchId);
+
+      if (!upstreamMatch) {
+        return NextResponse.json({ error: "Match not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({ source: "upstream", data: upstreamMatch });
     }
 
     return NextResponse.json({ source: "storage", data: storedMatch });

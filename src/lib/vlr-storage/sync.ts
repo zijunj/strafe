@@ -147,6 +147,7 @@ interface NormalizedMatchRow {
 export interface SyncTournamentMatchStorageParams {
   eventIds?: number[];
   matchIds?: number[];
+  matchDetailsLimit?: number;
   includeCompletedEvents?: boolean;
   syncEvents?: boolean;
   syncMatches?: boolean;
@@ -742,6 +743,12 @@ async function syncEventPlayerStats(params: SyncTournamentMatchStorageParams) {
 
 async function loadTargetMatches(params: SyncTournamentMatchStorageParams) {
   const supabase = createServiceRoleSupabaseClient();
+  const matchDetailsLimit =
+    typeof params.matchDetailsLimit === "number" &&
+    Number.isFinite(params.matchDetailsLimit) &&
+    params.matchDetailsLimit > 0
+      ? Math.floor(params.matchDetailsLimit)
+      : null;
 
   let query = supabase
     .from("matches")
@@ -750,7 +757,14 @@ async function loadTargetMatches(params: SyncTournamentMatchStorageParams) {
   if (params.matchIds?.length) {
     query = query.in("vlr_match_id", params.matchIds);
   } else {
-    query = query.in("status", ["live", "upcoming"]).limit(50);
+    query = query
+      .in("status", ["live", "upcoming"])
+      .order("last_synced_at", { ascending: true, nullsFirst: true })
+      .limit(matchDetailsLimit ?? 50);
+  }
+
+  if (params.matchIds?.length && matchDetailsLimit) {
+    query = query.limit(matchDetailsLimit);
   }
 
   const { data, error } = await query;

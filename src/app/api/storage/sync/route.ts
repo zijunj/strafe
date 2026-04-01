@@ -19,6 +19,12 @@ export async function POST(req: NextRequest) {
           .map((value: unknown) => Number(value))
           .filter((value: number) => Number.isFinite(value))
       : undefined;
+    const matchDetailsLimit =
+      typeof body.matchDetailsLimit === "number" &&
+      Number.isFinite(body.matchDetailsLimit) &&
+      body.matchDetailsLimit > 0
+        ? Math.floor(body.matchDetailsLimit)
+        : undefined;
     const syncEvents =
       typeof body.syncEvents === "boolean" ? body.syncEvents : true;
     const syncMatches =
@@ -35,6 +41,7 @@ export async function POST(req: NextRequest) {
     const result = await syncTournamentMatchStorage({
       eventIds,
       matchIds,
+      matchDetailsLimit,
       includeCompletedEvents: Boolean(body.includeCompletedEvents),
       syncEvents,
       syncMatches,

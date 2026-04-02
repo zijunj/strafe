@@ -20,6 +20,14 @@ interface VlrEventSegment {
   url_path: string;
 }
 
+function deriveEventTier(title: string | null | undefined) {
+  if (!title) {
+    return null;
+  }
+
+  return /^VCT 2026\b/i.test(title.trim()) ? 1 : null;
+}
+
 interface VlrUpcomingMatchesResponse {
   data?: {
     segments?: VlrUpcomingMatchSegment[];
@@ -526,6 +534,7 @@ async function syncEvents() {
       return {
         vlr_event_id: vlrEventId,
         title: event.title,
+        tier: deriveEventTier(event.title),
         status: event.status,
         region: event.region || null,
         dates: event.dates || null,
@@ -542,6 +551,7 @@ async function syncEvents() {
       ): row is {
         vlr_event_id: number;
         title: string;
+        tier: number | null;
         status: string;
         region: string | null;
         dates: string | null;

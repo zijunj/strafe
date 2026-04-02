@@ -2,7 +2,7 @@ import type { ParsedQuery } from "./parseQuery";
 import type { RetrievedStatRow, RetrievedStatsResult } from "./retrieveStats";
 
 export interface AIResponseUIHints {
-  intent: "comparison" | "player_lookup" | "team_lookup" | "leaderboard";
+  intent: "comparison" | "player_lookup" | "team_lookup" | "leaderboard" | "match_lookup";
   title: string;
   highlightMetric: ParsedQuery["metric"];
   highlightPlayers?: string[];
@@ -71,6 +71,27 @@ function buildUIHints(params: {
       suggestedFollowUps: [
         `Who has the best rating on ${team}?`,
         `Show ${team} players by ACS`,
+      ],
+    };
+  }
+
+  if (parsedQuery.entity === "match") {
+    const matchTeam = parsedQuery.filters.matchTeam;
+    const opponentTeam = parsedQuery.filters.opponentTeam;
+
+    return {
+      intent: "match_lookup",
+      title:
+        matchTeam && opponentTeam
+          ? `${matchTeam} vs ${opponentTeam}`
+          : matchTeam
+            ? `${matchTeam} matches`
+            : "Match schedule",
+      highlightMetric: parsedQuery.metric,
+      showSupportingData: false,
+      suggestedFollowUps: [
+        "Who is playing right now?",
+        "What matches are happening today?",
       ],
     };
   }

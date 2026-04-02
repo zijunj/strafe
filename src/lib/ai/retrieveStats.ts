@@ -53,6 +53,7 @@ export interface RetrievedStatsResult {
       scheduledAt: string | null;
       dateLabel: string | null;
       matchUrl: string;
+      region?: string | null;
     }>;
   };
 }
@@ -119,6 +120,7 @@ interface StoredMatchRow {
   scheduled_at: string | null;
   date_label: string | null;
   match_url: string;
+  events?: { region?: string | null } | Array<{ region?: string | null }> | null;
 }
 
 const MOCK_PLAYER_STATS: RetrievedStatRow[] = [
@@ -234,6 +236,170 @@ function toNumber(value: number | string | null | undefined): number {
 
 function normalizeForSearch(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function startOfDay(date: Date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function endOfDay(date: Date) {
+  const next = new Date(date);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function startOfWeek(date: Date) {
+  const next = startOfDay(date);
+  const day = next.getDay();
+  const diff = (day + 6) % 7;
+  next.setDate(next.getDate() - diff);
+  return next;
+}
+
+function endOfWeek(date: Date) {
+  const next = startOfWeek(date);
+  next.setDate(next.getDate() + 6);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function getDateRangeFromPreset(
+  preset: ParsedQuery["filters"]["datePreset"]
+): { from: Date; to: Date } | null {
+  const now = new Date();
+
+  switch (preset) {
+    case "today":
+      return { from: startOfDay(now), to: endOfDay(now) };
+    case "tomorrow": {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return { from: startOfDay(tomorrow), to: endOfDay(tomorrow) };
+    }
+    case "this_week":
+      return { from: startOfWeek(now), to: endOfWeek(now) };
+    default:
+      return null;
+  }
+}
+
+function getNestedEvent(
+  row: StoredMatchRow
+): { region?: string | null } | null {
+  if (!row.events) {
+    return null;
+  }
+
+  return Array.isArray(row.events) ? row.events[0] ?? null : row.events;
+}
+
+function matchesRequestedTeams(
+  row: StoredMatchRow,
+  team?: string,
+  opponent?: string
+) {
+  const team1 = normalizeForSearch(row.team_1_name || "");
+  const team2 = normalizeForSearch(row.team_2_name || "");
+  const requestedTeam = normalizeForSearch(team || "");
+  const requestedOpponent = normalizeForSearch(opponent || "");
+
+  if (!requestedTeam && !requestedOpponent) {
+    return true;
+  }
+
+  if (requestedTeam && requestedOpponent) {
+    return (
+      (team1.includes(requestedTeam) && team2.includes(requestedOpponent)) ||
+      (team1.includes(requestedOpponent) && team2.includes(requestedTeam))
+    );
+  }
+
+  return team1.includes(requestedTeam) || team2.includes(requestedTeam);
+}
+
+function sortMatchRows(rows: StoredMatchRow[], preset: ParsedQuery["filters"]["datePreset"]) {
+  const nextFirst = preset === "next";
+
+  return [...rows].sort((a, b) => {
+    const aTime = a.scheduled_at ? new Date(a.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER;
+    const bTime = b.scheduled_at ? new Date(b.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER;
+
+    return nextFirst ? aTime - bTime : aTime - bTime;
+  });
+}
+
+async function retrieveMatchesFromSupabase(parsedQuery: ParsedQuery) {
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const requestedTeam = parsedQuery.filters.matchTeam;
+    const requestedOpponent = parsedQuery.filters.opponentTeam;
+    const requestedStatus = parsedQuery.filters.status;
+    const dateRange = getDateRangeFromPreset(parsedQuery.filters.datePreset);
+
+    let query = supabase
+      .from("matches")
+      .select(
+        "vlr_match_id, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, status, scheduled_at, date_label, match_url, events(region)"
+      );
+
+    if (requestedStatus) {
+      query = query.eq("status", requestedStatus);
+    }
+
+    if (dateRange) {
+      query = query
+        .gte("scheduled_at", dateRange.from.toISOString())
+        .lte("scheduled_at", dateRange.to.toISOString());
+    }
+
+    if (requestedStatus === "live") {
+      query = query.order("scheduled_at", { ascending: true, nullsFirst: false }).limit(20);
+    } else if (parsedQuery.filters.datePreset === "next") {
+      query = query
+        .eq("status", "upcoming")
+        .order("scheduled_at", { ascending: true, nullsFirst: false })
+        .limit(10);
+    } else {
+      query = query
+        .order("scheduled_at", { ascending: true, nullsFirst: false })
+        .limit(50);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Direct match lookup error:", error.message);
+      return [];
+    }
+
+    const rows = ((data ?? []) as StoredMatchRow[]).filter((row) =>
+      matchesRequestedTeams(row, requestedTeam, requestedOpponent)
+    );
+
+    const sortedRows = sortMatchRows(rows, parsedQuery.filters.datePreset);
+    const limitedRows =
+      parsedQuery.filters.datePreset === "next" ? sortedRows.slice(0, 1) : sortedRows;
+
+    return limitedRows.map((row) => ({
+      vlrMatchId: row.vlr_match_id,
+      eventTitle: row.event_title,
+      eventSeries: row.event_series,
+      team1: row.team_1_name,
+      team2: row.team_2_name,
+      score1: row.team_1_score,
+      score2: row.team_2_score,
+      status: row.status,
+      scheduledAt: row.scheduled_at,
+      dateLabel: row.date_label,
+      matchUrl: row.match_url,
+      region: getNestedEvent(row)?.region ?? null,
+    }));
+  } catch (error: any) {
+    console.error("Direct match storage lookup failed:", error.message);
+    return [];
+  }
 }
 
 function getStoredRegions(region?: ParsedQuery["filters"]["region"]): string[] {
@@ -786,6 +952,7 @@ async function retrieveEventMatchesFromSupabase(event: StoredEventRow) {
       scheduledAt: row.scheduled_at,
       dateLabel: row.date_label,
       matchUrl: row.match_url,
+      region: null,
     }));
   } catch (error: any) {
     console.error("Event match storage lookup failed:", error.message);
@@ -808,6 +975,36 @@ export async function retrieveStats(
   const metricSortKey = getMetricSortKey(parsedQuery.metric);
   const canUseMockFallback = process.env.NODE_ENV !== "production";
   const referencedEvent = await findReferencedEvent(parsedQuery.normalizedQuestion);
+
+  if (parsedQuery.entity === "match") {
+    const directMatches = await retrieveMatchesFromSupabase(parsedQuery);
+
+    return {
+      rows: [],
+      retrievalMeta: {
+        source: "event_storage",
+        appliedRegion: region,
+        appliedTimespanDays: timespanDays,
+        appliedEventGroupId: eventGroupId,
+        appliedEventName: referencedEvent?.title ?? null,
+        rowCount: directMatches.length,
+      },
+      contextData: {
+        event: referencedEvent
+          ? {
+              id: referencedEvent.id,
+              vlrEventId: referencedEvent.vlr_event_id,
+              title: referencedEvent.title,
+              status: referencedEvent.status,
+              region: referencedEvent.region,
+              dates: referencedEvent.dates,
+              prize: referencedEvent.prize,
+            }
+          : null,
+        matches: directMatches,
+      },
+    };
+  }
 
   if (referencedEvent) {
     const [eventRows, eventMatches] = await Promise.all([

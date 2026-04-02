@@ -26,6 +26,10 @@ export interface ParsedQuery {
     agent?: string;
     minRounds?: number;
     team?: string;
+    matchTeam?: string;
+    opponentTeam?: string;
+    status?: "live" | "upcoming" | "completed";
+    datePreset?: "today" | "tomorrow" | "this_week" | "next" | null;
   };
 }
 
@@ -218,6 +222,84 @@ function parseTeam(question: string): string | undefined {
   return teamMatch?.[1];
 }
 
+function cleanMatchTeamCandidate(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const cleaned = value
+    .replace(/^(when is|when does|what time does|what time is|show me|find|tell me)\s+/i, "")
+    .replace(/\b(play|playing|next|today|tomorrow|this week|right now)\b/gi, "")
+    .replace(/[?.!,]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned || undefined;
+}
+
+function parseMatchTeams(question: string) {
+  const versusMatch = question.match(
+    /\b([a-z0-9][a-z0-9 .&'-]{1,40}?)\s+(?:vs|versus)\s+([a-z0-9][a-z0-9 .&'-]{1,40}?)(?:\?|$)/i
+  );
+
+  if (!versusMatch) {
+    return { matchTeam: undefined, opponentTeam: undefined };
+  }
+
+  return {
+    matchTeam: cleanMatchTeamCandidate(versusMatch[1]),
+    opponentTeam: cleanMatchTeamCandidate(versusMatch[2]),
+  };
+}
+
+function parseMatchTeam(question: string): string | undefined {
+  const nextPlayMatch =
+    question.match(/\bwhat\s+time\s+does\s+(.+?)\s+play\b/i) ||
+    question.match(/\bwhen\s+does\s+(.+?)\s+play\b/i) ||
+    question.match(/\bwhen\s+is\s+(.+?)\s+playing\b/i) ||
+    question.match(/\bwhat\s+time\s+is\s+(.+?)\s+playing\b/i);
+
+  return cleanMatchTeamCandidate(nextPlayMatch?.[1]);
+}
+
+function parseMatchStatus(question: string): "live" | "upcoming" | "completed" | undefined {
+  if (/\b(right now|live|playing now)\b/i.test(question)) {
+    return "live";
+  }
+
+  if (/\b(upcoming|next|happening today|today|tomorrow|this week)\b/i.test(question)) {
+    return "upcoming";
+  }
+
+  if (/\b(completed|finished|results?)\b/i.test(question)) {
+    return "completed";
+  }
+
+  return undefined;
+}
+
+function parseDatePreset(
+  question: string
+): "today" | "tomorrow" | "this_week" | "next" | null {
+  if (/\btoday\b/i.test(question)) {
+    return "today";
+  }
+
+  if (/\btomorrow\b/i.test(question)) {
+    return "tomorrow";
+  }
+
+  if (/\bthis week\b/i.test(question)) {
+    return "this_week";
+  }
+
+  if (/\bnext\b/i.test(question)) {
+    return "next";
+  }
+
+  return null;
+}
+
 function isEventScheduleQuestion(question: string) {
   return /\b(event|events|tournament|tournaments|schedule|matches?|upcoming|live|when|date|prize|status|vct|champions tour)\b/i.test(
     question
@@ -242,6 +324,10 @@ export function parseQuery(question: string): ParsedQuery {
   )?.days;
   const matchedEventGroupId = null;
   const eventScheduleQuestion = isEventScheduleQuestion(normalizedQuestion);
+  const parsedMatchTeams = parseMatchTeams(normalizedQuestion);
+  const parsedMatchTeam = parseMatchTeam(normalizedQuestion);
+  const parsedMatchStatus = parseMatchStatus(normalizedQuestion);
+  const parsedDatePreset = parseDatePreset(normalizedQuestion);
 
   const compareMatch = normalizedQuestion.match(
     /compare\s+([a-z0-9._-]+)\s+and\s+([a-z0-9._-]+)/i
@@ -307,6 +393,14 @@ export function parseQuery(question: string): ParsedQuery {
   const minRounds = parseMinRounds(normalizedQuestion);
   const defaultTimespan =
     matchedTimespan ?? (comparisonPlayers.length > 0 ? "all" : 30);
+  const matchTeam = parsedMatchTeams.matchTeam || parsedMatchTeam;
+  const opponentTeam = parsedMatchTeams.opponentTeam;
+  const hasMatchIntent =
+    Boolean(matchTeam) ||
+    Boolean(opponentTeam) ||
+    Boolean(parsedMatchStatus) ||
+    parsedDatePreset !== null ||
+    eventScheduleQuestion;
 
   return {
     rawQuestion: question,
@@ -315,7 +409,7 @@ export function parseQuery(question: string): ParsedQuery {
       comparisonPlayers.length > 1 ? comparisonPlayers : undefined,
     metric: matchedMetric,
     entity:
-      eventScheduleQuestion
+      hasMatchIntent
         ? "match"
         : comparisonPlayers.length > 0 || inferredPlayer
         ? "player"
@@ -330,6 +424,10 @@ export function parseQuery(question: string): ParsedQuery {
       agent,
       minRounds,
       team,
+      matchTeam,
+      opponentTeam,
+      status: parsedMatchStatus,
+      datePreset: parsedDatePreset,
     },
   };
 }

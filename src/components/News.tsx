@@ -149,11 +149,7 @@ export default function News({ newsView }: NewsProps) {
             <h2 className="mb-3 max-w-3xl text-[28px] font-bold leading-[1.15] text-white md:text-[30px]">
               {featured?.title}
             </h2>
-            {featured?.description ? (
-              <p className="mb-4 max-w-2xl line-clamp-2 text-[15px] leading-7 text-[rgba(227,232,238,0.82)]">
-                {featured.description}
-              </p>
-            ) : null}
+
             <div className="mb-5 text-sm text-[rgba(214,220,226,0.72)]">
               {featured?.date} - {featured?.author}
             </div>

@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from("events")
       .select(
-        "id, vlr_event_id, title, status, region, dates, prize, thumb, event_url, last_synced_at"
+        "id, vlr_event_id, title, tier, status, region, dates, prize, thumb, event_url, last_synced_at"
       )
       .order("title", { ascending: true })
       .limit(Number.isFinite(limit) ? limit : 100);
@@ -101,6 +101,7 @@ export async function GET(req: NextRequest) {
         id: row.id,
         vlr_event_id: row.vlr_event_id,
         title: row.title,
+        tier: row.tier,
         status: normalizeEventStatus(row.status),
         region: row.region,
         dates: row.dates,
@@ -110,6 +111,14 @@ export async function GET(req: NextRequest) {
         last_synced_at: row.last_synced_at,
       }))
       .sort((a, b) => {
+        const tierPriorityA = a.tier === 1 ? 0 : 1;
+        const tierPriorityB = b.tier === 1 ? 0 : 1;
+        const tierDiff = tierPriorityA - tierPriorityB;
+
+        if (tierDiff !== 0) {
+          return tierDiff;
+        }
+
         const statusPriorityDiff =
           getStatusPriority(a.status) - getStatusPriority(b.status);
 

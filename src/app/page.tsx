@@ -9,9 +9,9 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="page-shell">
-      <div className="flex items-start gap-6 xl:gap-8">
-        <div className="flex-1 space-y-4">
+    <div className="mx-auto max-w-[100rem] px-5 pb-10">
+      <div className="flex items-start gap-5 xl:gap-6">
+        <div className="min-w-0 max-w-[926px] flex-1 space-y-4">
           <div className="content-rise stagger-1 page-hero mb-0">
             <img
               src="/valorantLogo.png"
@@ -27,21 +27,25 @@ export default function HomePage() {
           </div>
 
           <div className="content-rise stagger-2">
+            <Matches pageView="home-live" />
+          </div>
+
+          <div className="content-rise stagger-3">
             <News newsView="featured" />
           </div>
 
-          <div className="content-rise stagger-3 relative">
+          <div className="content-rise stagger-4 relative">
             <div className="relative">
               <Tournaments pageView="home" tournamentView="ongoing" />
             </div>
           </div>
 
-          <div className="content-rise stagger-4">
+          <div className="content-rise stagger-5">
             <AboutValorant />
           </div>
         </div>
 
-        <div className="w-[360px] mt-[76px] space-y-4">
+        <div className="mt-[76px] w-[360px] space-y-4">
           <div className="content-rise stagger-3 card">
             <div className="card-header">
               <h2 className="card-title text-[var(--color-text-primary)]">

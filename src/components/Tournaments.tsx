@@ -16,6 +16,7 @@ interface TournamentItem {
   id: number;
   vlr_event_id: number;
   title: string;
+  tier?: number | null;
   status: string;
   region: string;
   thumb: string;
@@ -25,6 +26,7 @@ interface TournamentItem {
 }
 
 interface MatchItem {
+  event_id?: number;
   match_event: string;
   match_series: string;
   team1: string;
@@ -76,12 +78,18 @@ function getTournamentHref(tournament: TournamentItem) {
   return `/tournaments/${tournament.vlr_event_id}/${slug}`;
 }
 
-function getTournamentTeamLogos(matches: MatchItem[], tournamentTitle: string) {
+function getTournamentTeamLogos(
+  matches: MatchItem[],
+  tournament: TournamentItem,
+) {
   const seen = new Set<string>();
   const logos: TournamentTeamLogo[] = [];
 
   for (const match of matches) {
-    if (match.match_event !== tournamentTitle) {
+    if (
+      match.event_id !== tournament.id &&
+      match.match_event !== tournament.title
+    ) {
       continue;
     }
 
@@ -111,6 +119,34 @@ function getTournamentTeams(matches: MatchItem[], tournamentTitle: string) {
 
   for (const match of matches) {
     if (match.match_event !== tournamentTitle) {
+      continue;
+    }
+
+    const maybeAdd = (name?: string, logo?: string | null) => {
+      if (!name || seen.has(name)) {
+        return;
+      }
+
+      seen.add(name);
+      teams.push({ name, logo: logo || "/valorantLogo.png" });
+    };
+
+    maybeAdd(match.team1, match.team1_logo);
+    maybeAdd(match.team2, match.team2_logo);
+  }
+
+  return teams;
+}
+
+function getTournamentTeamsByEvent(matches: MatchItem[], tournament: TournamentItem) {
+  const seen = new Set<string>();
+  const teams: TournamentTeamLogo[] = [];
+
+  for (const match of matches) {
+    if (
+      match.event_id !== tournament.id &&
+      match.match_event !== tournament.title
+    ) {
       continue;
     }
 
@@ -221,7 +257,13 @@ export default function Tournaments({
   const matchesUrl =
     pageView === "home"
       ? "storage/matches?status=upcoming&backgroundSync=0"
-      : "storage/matches?status=upcoming";
+      : pageView === "tournament"
+        ? "storage/matches?limit=500"
+        : "storage/matches?status=upcoming";
+  const matchesCacheKey =
+    pageView === "tournament"
+      ? "tournamentMatches-storage"
+      : "upcomingMatches-storage";
 
   const { data: tournamentData, loading } = useValorantApiWithCache<
     TournamentItem[]
@@ -232,7 +274,7 @@ export default function Tournaments({
   });
 
   const { data: matchData = [] } = useValorantApiWithCache<MatchItem[]>({
-    key: "upcomingMatches-storage",
+    key: matchesCacheKey,
     url: matchesUrl,
     parse: (res) => res.data.segments,
   });
@@ -512,10 +554,7 @@ export default function Tournaments({
                 <div className="min-w-0">
                   {filtered.map((tournament, i) =>
                     (() => {
-                      const teams = getTournamentTeams(
-                        matchData,
-                        tournament.title,
-                      );
+                      const teams = getTournamentTeamsByEvent(matchData, tournament);
                       const visibleTeams = teams.slice(0, 3);
                       const remainingTeams = Math.max(
                         teams.length - visibleTeams.length,
@@ -526,7 +565,7 @@ export default function Tournaments({
                         <Link
                           key={i}
                           href={getTournamentHref(tournament)}
-                          className="grid min-h-[88px] grid-cols-[56px_minmax(0,2.2fr)_54px_82px_100px_172px] items-center border-b border-[var(--color-border-default)] bg-[var(--color-bg-surface-elevated)] transition-colors hover:bg-[var(--color-bg-card)]"
+                          className="grid min-h-[88px] grid-cols-[56px_minmax(0,2.2fr)_54px_82px_100px_200px] items-center border-b border-[var(--color-border-default)] bg-[var(--color-bg-surface-elevated)] transition-colors hover:bg-[var(--color-bg-card)]"
                         >
                           <div className="flex h-full items-center justify-center border-r border-[var(--color-border-default)]">
                             <img
@@ -544,10 +583,17 @@ export default function Tournaments({
                                 className="h-8 w-8 object-contain"
                               />
                             </div>
-                            <div className="min-w-0">
-                              <h3 className="truncate text-[15px] font-bold leading-5 text-[var(--color-text-primary)]">
-                                {tournament.title}
-                              </h3>
+                          <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="truncate text-[15px] font-bold leading-5 text-[var(--color-text-primary)]">
+                                  {tournament.title}
+                                </h3>
+                                {tournament.tier === 1 ? (
+                                  <span className="shrink-0 rounded-md bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-black">
+                                    Major
+                                  </span>
+                                ) : null}
+                              </div>
                               <p className="mt-1 truncate text-sm leading-5 text-[var(--color-text-muted)]">
                                 Valorant
                               </p>

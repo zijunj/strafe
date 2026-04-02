@@ -69,7 +69,7 @@ interface AIResult {
     }>;
   };
   uiHints?: {
-    intent: "comparison" | "player_lookup" | "team_lookup" | "leaderboard";
+    intent: "comparison" | "player_lookup" | "team_lookup" | "leaderboard" | "match_lookup";
     title: string;
     highlightMetric: string;
     highlightPlayers?: string[];

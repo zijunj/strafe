@@ -220,10 +220,90 @@ export default function Matches({ pageView }: MatchProps) {
 
   return (
     <>
+      {pageView === "home-live" &&
+        liveMatches.length > 0 &&
+        (() => {
+          const item = liveMatches[0];
+          const matchPath = item.match_page.replace("https://www.vlr.gg/", "");
+          const [id, slug] = matchPath.split("/", 2);
+
+          return (
+            <Link
+              href={{
+                pathname: `/matches/${id}/${slug}`,
+              }}
+              className="block overflow-hidden rounded-2xl border border-[rgba(255,90,90,0.2)] bg-[linear-gradient(90deg,rgba(90,24,24,0.55),rgba(24,24,24,0.94))] shadow-[var(--shadow-card)] transition hover:border-[rgba(255,90,90,0.32)] hover:bg-[linear-gradient(90deg,rgba(110,28,28,0.62),rgba(32,32,32,0.98))]"
+            >
+              <div className="flex items-center gap-3 px-4 py-4">
+                <div className="inline-flex shrink-0 items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-white">
+                  <span className="h-2 w-2 rounded-full bg-[#ff4d4f]" />
+                  <span>Live</span>
+                </div>
+
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <img
+                      src={item.team1_logo || "/valorantLogo.png"}
+                      alt={item.team1 || "Team"}
+                      className="h-8 w-8 rounded-full object-contain flex-shrink-0"
+                    />
+                    <span className="truncate text-[15px] font-bold leading-tight text-[var(--color-text-primary)]">
+                      {item.team1}
+                    </span>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-3 text-[var(--color-text-primary)]">
+                    <span className="text-[22px] font-black leading-none">
+                      {item.score1 ?? "0"}
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+                      -
+                    </span>
+                    <span className="text-[22px] font-black leading-none">
+                      {item.score2 ?? "0"}
+                    </span>
+                  </div>
+
+                  <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5">
+                    <img
+                      src={item.team2_logo || "/valorantLogo.png"}
+                      alt={item.team2 || "Team"}
+                      className="h-8 w-8 rounded-full object-contain flex-shrink-0"
+                    />
+                    <span className="truncate text-right text-[15px] font-bold leading-tight text-[var(--color-text-primary)]">
+                      {item.team2}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="hidden min-w-0 shrink-0 items-center gap-3 border-l border-[rgba(255,255,255,0.12)] pl-4 lg:flex">
+                  <img
+                    src={item.tournament_logo || "/valorantLogo.png"}
+                    alt={item.match_event || "Tournament"}
+                    className="h-9 w-9 object-contain opacity-90"
+                  />
+                  <div className="min-w-0 max-w-[250px]">
+                    <div className="truncate text-[13px] font-bold leading-tight text-[var(--color-text-primary)]">
+                      {item.match_event}
+                    </div>
+                    <div className="truncate text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">
+                      {item.match_series}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="shrink-0 text-xl text-[var(--color-text-muted)]">
+                  {">"}
+                </div>
+              </div>
+            </Link>
+          );
+        })()}
+
       {pageView === "home" && (
         <section className="max-w-7xl mx-auto">
           {Object.entries(
-            (visibleMatchData ?? [])
+            nonLiveMatches
               .sort(
                 (a, b) =>
                   new Date(a.unix_timestamp).getTime() -
@@ -254,55 +334,65 @@ export default function Matches({ pageView }: MatchProps) {
 
               {matches.map((item, j) => {
                 const { hour, minute } = getMatchStartTime(item.unix_timestamp);
+                const matchPath = item.match_page.replace(
+                  "https://www.vlr.gg/",
+                  "",
+                );
+                const [id, slug] = matchPath.split("/", 2);
 
                 return (
-                  <div
-                    key={j}
-                    className="flex items-stretch border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-surface-elevated)] transition cursor-pointer"
+                  <Link
+                    key={`${id}-${j}`}
+                    href={{
+                      pathname: `/matches/${id}/${slug}`,
+                    }}
                   >
-                    <div className="flex items-center justify-center w-16 border-r border-[var(--color-border-subtle)] text-[var(--color-text-muted)]">
-                      <div className="flex items-start">
-                        <span className="text-xl font-bold leading-none">
-                          {hour.toString().padStart(2, "0")}
-                        </span>
-                        <span className="text-xs font-bold ml-0.5">
-                          {minute}
-                        </span>
+                    <div className="flex items-stretch border-b border-[var(--color-border-subtle)] transition cursor-pointer hover:bg-[var(--color-bg-surface-elevated)]">
+                      <div className="flex items-center justify-center w-16 border-r border-[var(--color-border-subtle)] text-[var(--color-text-muted)]">
+                        <div className="flex items-start">
+                          <span className="text-xl font-bold leading-none">
+                            {hour.toString().padStart(2, "0")}
+                          </span>
+                          <span className="text-xs font-bold ml-0.5">
+                            {minute}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex-1 py-2 px-3">
-                      {item.status === "live" ? (
-                        <div className="mb-2 inline-flex rounded-full bg-[var(--color-primary)] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-black">
-                          Live
+                      <div className="flex-1 py-2 px-3">
+                        {item.status === "live" ? (
+                          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[rgba(120,24,24,0.88)] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white">
+                            <span className="h-2 w-2 rounded-full bg-[#ff4d4f]" />
+                            Live
+                          </div>
+                        ) : null}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <img
+                              src={item.team1_logo || "/valorantLogo.png"}
+                              alt={item.team1 || "Team"}
+                              className="h-5 w-5 rounded-full object-contain flex-shrink-0"
+                            />
+                            <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
+                              {item.team1}
+                            </span>
+                          </div>
                         </div>
-                      ) : null}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <img
-                            src={item.team1_logo || "/valorantLogo.png"}
-                            alt={item.team1 || "Team"}
-                            className="h-5 w-5 rounded-full object-contain flex-shrink-0"
-                          />
-                          <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
-                            {item.team1}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <img
-                            src={item.team2_logo || "/valorantLogo.png"}
-                            alt={item.team2 || "Team"}
-                            className="h-5 w-5 rounded-full object-contain flex-shrink-0"
-                          />
-                          <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
-                            {item.team2}
-                          </span>
+                        <div className="flex items-center justify-between mt-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <img
+                              src={item.team2_logo || "/valorantLogo.png"}
+                              alt={item.team2 || "Team"}
+                              className="h-5 w-5 rounded-full object-contain flex-shrink-0"
+                            />
+                            <span className="text-sm text-[var(--color-text-primary)] font-semibold truncate pr-2">
+                              {item.team2}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

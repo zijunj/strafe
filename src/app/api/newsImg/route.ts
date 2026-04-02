@@ -11,6 +11,7 @@ type FeaturedArticle = {
   url: string | null;
   img: string | null;
   title: string | null;
+  description: string | null;
 };
 
 function isStale(lastSyncedAt: string | null | undefined, staleHours: number) {
@@ -82,11 +83,21 @@ async function scrapeFeaturedArticles() {
         .find(".news-feature-caption .wf-spoiler-visible")
         .text()
         .trim();
+      const description = $(el)
+        .find(".news-feature-caption")
+        .contents()
+        .toArray()
+        .map((node) => $(node).text().trim())
+        .filter(Boolean)
+        .filter((text) => text !== title)
+        .join(" ")
+        .trim();
 
       return {
         url: relativeUrl ? `https://www.vlr.gg${relativeUrl}` : null,
         img: imgSrc ? (imgSrc.startsWith("//") ? `https:${imgSrc}` : imgSrc) : null,
         title: title || null,
+        description: description || null,
       };
     })
     .get()

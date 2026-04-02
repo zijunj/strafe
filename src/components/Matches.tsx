@@ -1,9 +1,9 @@
 "use client";
 
-import useValorantApiWithCache from "../app/api/Valorant";
-import { getMatchStartTime } from "../app/utils/apiFunctions";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import useValorantApiWithCache from "../app/api/Valorant";
+import { getMatchStartTime } from "../app/utils/apiFunctions";
 
 interface MatchProps {
   pageView: string;
@@ -21,6 +21,9 @@ interface MatchItem {
   tournament_logo?: string | null;
   unix_timestamp: string;
   time_until_match: string;
+  status?: string;
+  score1?: string | null;
+  score2?: string | null;
 }
 
 interface TournamentItem {
@@ -35,14 +38,128 @@ interface TournamentItem {
 
 const MATCHES_PAGE_BATCH_SIZE = 12;
 
+function MatchRow({
+  item,
+  tournament,
+  rowClassName,
+  liveLeftColumn = false,
+}: {
+  item: MatchItem;
+  tournament?: TournamentItem;
+  rowClassName: string;
+  liveLeftColumn?: boolean;
+}) {
+  const { hour, minute } = getMatchStartTime(item.unix_timestamp);
+  const matchPath = item.match_page.replace("https://www.vlr.gg/", "");
+  const [id, slug] = matchPath.split("/", 2);
+
+  return (
+    <Link
+      key={id}
+      href={{
+        pathname: `/matches/${id}/${slug}`,
+      }}
+    >
+      <div className={rowClassName}>
+        {liveLeftColumn ? (
+          <div className="flex h-12 w-20 flex-shrink-0 flex-col items-center justify-center text-center">
+            <div className="mt-1 inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-extrabold uppercase tracking-[0.08em] text-white">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ff4d4f]" />
+              <span>Live</span>
+            </div>
+          </div>
+        ) : (
+          <div className="relative flex items-start justify-center flex-shrink-0 w-20 h-12 text-center">
+            <span className="text-3xl font-bold text-[var(--color-text-primary)] leading-none">
+              {hour.toString().padStart(2, "0")}
+            </span>
+            <span className="absolute top-0 right-0 text-base font-semibold text-[var(--color-text-muted)] -translate-y-1">
+              {minute}
+            </span>
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0">
+          {item.status === "live" && !liveLeftColumn ? (
+            <div className="mb-2 inline-flex rounded-full bg-[var(--color-primary)] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-black">
+              Live
+            </div>
+          ) : null}
+          <div className="flex items-center gap-2">
+            <img
+              src={item.team1_logo || "/valorantLogo.png"}
+              alt={item.team1 || "Team"}
+              className="h-7 w-7 rounded-full object-contain flex-shrink-0"
+            />
+            <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
+              {item.team1}
+            </span>
+            <span className="text-sm text-[var(--color-text-muted)]">vs</span>
+            <img
+              src={item.team2_logo || "/valorantLogo.png"}
+              alt={item.team2 || "Team"}
+              className="h-7 w-7 rounded-full object-contain flex-shrink-0"
+            />
+            <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
+              {item.team2}
+            </span>
+          </div>
+        </div>
+
+        <div className="min-w-[34%] flex justify-end">
+          <div className="flex items-center justify-end gap-3 max-w-full">
+            <div className="min-w-0 text-right">
+              <div className="text-[15px] font-semibold text-[var(--color-text-secondary)] truncate">
+                {item.match_event}
+              </div>
+              <div className="text-sm text-[var(--color-text-muted)] truncate">
+                {item.match_series}
+              </div>
+            </div>
+            <img
+              src={item.tournament_logo || "/valorantLogo.png"}
+              alt={item.match_event || "Tournament"}
+              className="w-10 h-10 object-contain opacity-90 flex-shrink-0"
+            />
+          </div>
+        </div>
+
+        <div className="min-w-[15%] text-right">
+          <span className="text-sm text-[var(--color-text-muted)] truncate">
+            {tournament?.region || ""}
+          </span>
+        </div>
+
+        <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center">
+          <div className="flex items-center -space-x-2">
+            <img
+              src="/valorantLogo.png"
+              alt="Valorant Logo"
+              className="w-10 h-10 object-contain opacity-65 grayscale brightness-90 contrast-125"
+            />
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function Matches({ pageView }: MatchProps) {
-  const matchesUrl = "storage/matches?status=upcoming&backgroundSync=0";
+  const upcomingMatchesUrl = "storage/matches?status=upcoming&backgroundSync=0";
+  const liveMatchesUrl = "storage/matches?status=live&backgroundSync=0";
   const tournamentsUrl = "storage/events?backgroundSync=0";
 
-  const { data: matchData = [], loading: matchesLoading } =
+  const { data: upcomingMatchData = [], loading: upcomingMatchesLoading } =
     useValorantApiWithCache<MatchItem[]>({
       key: "upcomingMatches-storage",
-      url: matchesUrl,
+      url: upcomingMatchesUrl,
+      parse: (res) => res.data.segments,
+    });
+
+  const { data: liveMatchData = [], loading: liveMatchesLoading } =
+    useValorantApiWithCache<MatchItem[]>({
+      key: "liveMatches-storage",
+      url: liveMatchesUrl,
       parse: (res) => res.data.segments,
     });
 
@@ -52,9 +169,38 @@ export default function Matches({ pageView }: MatchProps) {
       url: tournamentsUrl,
       parse: (res) => res.data.segments,
     });
+
+  const matchData = [...liveMatchData, ...upcomingMatchData].sort((a, b) => {
+    const statusPriority = (status?: string) => {
+      if (status === "live") {
+        return 0;
+      }
+
+      if (status === "upcoming") {
+        return 1;
+      }
+
+      return 2;
+    };
+
+    const priorityDiff = statusPriority(a.status) - statusPriority(b.status);
+
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    return (
+      new Date(a.unix_timestamp).getTime() -
+      new Date(b.unix_timestamp).getTime()
+    );
+  });
+
   const [visibleCount, setVisibleCount] = useState(MATCHES_PAGE_BATCH_SIZE);
+  const liveMatches = matchData.filter((match) => match.status === "live");
+  const nonLiveMatches = matchData.filter((match) => match.status !== "live");
   const visibleMatchData =
-    pageView === "match" ? matchData.slice(0, visibleCount) : matchData;
+    pageView === "match" ? nonLiveMatches.slice(0, visibleCount) : matchData;
+  const totalMatchCount = matchData.length;
 
   useEffect(() => {
     if (pageView !== "match") {
@@ -62,9 +208,9 @@ export default function Matches({ pageView }: MatchProps) {
     }
 
     setVisibleCount(MATCHES_PAGE_BATCH_SIZE);
-  }, [matchData, pageView]);
+  }, [pageView, totalMatchCount]);
 
-  if (matchesLoading || tournamentsLoading) {
+  if (upcomingMatchesLoading || liveMatchesLoading || tournamentsLoading) {
     return (
       <div className="p-4">
         <p className="body-text">Loading...</p>
@@ -95,7 +241,6 @@ export default function Matches({ pageView }: MatchProps) {
               ),
           ).map(([tournament, matches], i) => (
             <div key={i}>
-              {/* Tournament Header */}
               <div className="flex items-center px-3 py-2 bg-[var(--color-bg-surface-elevated)] border-b border-[var(--color-border-subtle)]">
                 <img
                   src={matches[0]?.tournament_logo || "/valorantLogo.png"}
@@ -107,7 +252,6 @@ export default function Matches({ pageView }: MatchProps) {
                 </span>
               </div>
 
-              {/* Matches under this tournament */}
               {matches.map((item, j) => {
                 const { hour, minute } = getMatchStartTime(item.unix_timestamp);
 
@@ -116,7 +260,6 @@ export default function Matches({ pageView }: MatchProps) {
                     key={j}
                     className="flex items-stretch border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-surface-elevated)] transition cursor-pointer"
                   >
-                    {/* Left: Time */}
                     <div className="flex items-center justify-center w-16 border-r border-[var(--color-border-subtle)] text-[var(--color-text-muted)]">
                       <div className="flex items-start">
                         <span className="text-xl font-bold leading-none">
@@ -128,8 +271,12 @@ export default function Matches({ pageView }: MatchProps) {
                       </div>
                     </div>
 
-                    {/* Center: Teams */}
                     <div className="flex-1 py-2 px-3">
+                      {item.status === "live" ? (
+                        <div className="mb-2 inline-flex rounded-full bg-[var(--color-primary)] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-black">
+                          Live
+                        </div>
+                      ) : null}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0">
                           <img
@@ -165,6 +312,40 @@ export default function Matches({ pageView }: MatchProps) {
 
       {pageView === "match" && (
         <section>
+          {liveMatches.length > 0 && (
+            <div className="mb-6 overflow-hidden rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-bg-card)]">
+              <div className="border-b border-[var(--color-border-subtle)] px-5 py-4">
+                <h2 className="text-[var(--color-text-primary)] text-lg font-bold">
+                  Live Matches
+                </h2>
+              </div>
+
+              <div className="hidden sm:flex justify-between items-center px-4 py-2 text-xs uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-bg-card)] border-b border-[var(--color-border-subtle)]">
+                <div className="w-20 text-center">Status</div>
+                <div className="flex-1 text-left pl-2">Teams</div>
+                <div className="min-w-[34%] text-center">Tournament</div>
+                <div className="min-w-[15%] text-right">Region</div>
+                <div className="w-10"></div>
+              </div>
+
+              {liveMatches.map((item) => {
+                const tournament = (tournamentData ?? []).find(
+                  (t) => t.title === item.match_event,
+                );
+
+                return (
+                  <MatchRow
+                    key={`live-${item.match_page}`}
+                    item={item}
+                    tournament={tournament}
+                    rowClassName="flex items-center gap-4 px-4 py-3 bg-[linear-gradient(90deg,rgba(90,24,24,0.55),rgba(45,20,20,0.72))] hover:bg-[linear-gradient(90deg,rgba(110,28,28,0.62),rgba(52,23,23,0.8))] transition border-b border-[rgba(255,90,90,0.16)]"
+                    liveLeftColumn
+                  />
+                );
+              })}
+            </div>
+          )}
+
           {Object.entries(
             (visibleMatchData ?? [])
               .sort(
@@ -189,12 +370,10 @@ export default function Matches({ pageView }: MatchProps) {
               ),
           ).map(([date, matches], i) => (
             <div key={i} className="mb-6">
-              {/* Date Header */}
               <h2 className="text-[var(--color-text-primary)] text-lg font-bold px-4 py-3 bg-[var(--color-bg-surface)] rounded-t-lg border-t border-l border-r border-[var(--color-border-default)]">
                 {date}
               </h2>
 
-              {/* Column Headers */}
               <div className="hidden sm:flex justify-between items-center px-4 py-2 text-xs uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-bg-card)] border-b border-[var(--color-border-subtle)]">
                 <div className="w-20 text-center">Time</div>
                 <div className="flex-1 text-left pl-2">Teams</div>
@@ -203,116 +382,33 @@ export default function Matches({ pageView }: MatchProps) {
                 <div className="w-10"></div>
               </div>
 
-              {/* Matches under this date */}
-              {matches.map((item, j) => {
-                const { hour, minute } = getMatchStartTime(item.unix_timestamp);
-
+              {matches.map((item) => {
                 const tournament = (tournamentData ?? []).find(
                   (t) => t.title === item.match_event,
                 );
 
-                const matchPath = item.match_page.replace(
-                  "https://www.vlr.gg/",
-                  "",
-                );
-                const [id, slug] = matchPath.split("/", 2);
-
                 return (
-                  <Link
-                    key={id}
-                    href={{
-                      pathname: `/matches/${id}/${slug}`,
-                    }}
-                  >
-                    <div
-                      key={j}
-                      className="flex items-center gap-4 px-4 py-3 bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-card)] transition border-b border-[var(--color-border-subtle)]"
-                    >
-                      {/* Time */}
-                      <div className="relative flex items-start justify-center flex-shrink-0 w-20 h-12 text-center">
-                        <span className="text-3xl font-bold text-[var(--color-text-primary)] leading-none">
-                          {hour.toString().padStart(2, "0")}
-                        </span>
-                        <span className="absolute top-0 right-0 text-base font-semibold text-[var(--color-text-muted)] -translate-y-1">
-                          {minute}
-                        </span>
-                      </div>
-
-                      {/* Teams */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={item.team1_logo || "/valorantLogo.png"}
-                            alt={item.team1 || "Team"}
-                            className="h-7 w-7 rounded-full object-contain flex-shrink-0"
-                          />
-                          <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
-                            {item.team1}
-                          </span>
-                          <span className="text-sm text-[var(--color-text-muted)]">
-                            vs
-                          </span>
-                          <img
-                            src={item.team2_logo || "/valorantLogo.png"}
-                            alt={item.team2 || "Team"}
-                            className="h-7 w-7 rounded-full object-contain flex-shrink-0"
-                          />
-                          <span className="text-[15px] font-semibold text-[var(--color-text-primary)] truncate">
-                            {item.team2}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tournament */}
-                      <div className="min-w-[34%] flex justify-end">
-                        <div className="flex items-center justify-end gap-3 max-w-full">
-                          <div className="min-w-0 text-right">
-                            <div className="text-[15px] font-semibold text-[var(--color-text-secondary)] truncate">
-                              {item.match_event}
-                            </div>
-                            <div className="text-sm text-[var(--color-text-muted)] truncate">
-                              {item.match_series}
-                            </div>
-                          </div>
-                          <img
-                            src={item.tournament_logo || "/valorantLogo.png"}
-                            alt={item.match_event || "Tournament"}
-                            className="w-10 h-10 object-contain opacity-90 flex-shrink-0"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Region */}
-                      <div className="min-w-[15%] text-right">
-                        <span className="text-sm text-[var(--color-text-muted)] truncate">
-                          {tournament?.region || ""}
-                        </span>
-                      </div>
-
-                      {/* Logo */}
-                      <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center">
-                        <div className="flex items-center -space-x-2">
-                          <img
-                            src="/valorantLogo.png"
-                            alt="Valorant Logo"
-                            className="w-10 h-10 object-contain opacity-65 grayscale brightness-90 contrast-125"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
+                  <MatchRow
+                    key={item.match_page}
+                    item={item}
+                    tournament={tournament}
+                    rowClassName="flex items-center gap-4 px-4 py-3 bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-card)] transition border-b border-[var(--color-border-subtle)]"
+                  />
                 );
               })}
             </div>
           ))}
 
-          {visibleCount < matchData.length && (
+          {visibleCount < nonLiveMatches.length && (
             <div className="flex justify-center py-4">
               <button
                 type="button"
                 onClick={() =>
                   setVisibleCount((current) =>
-                    Math.min(current + MATCHES_PAGE_BATCH_SIZE, matchData.length)
+                    Math.min(
+                      current + MATCHES_PAGE_BATCH_SIZE,
+                      nonLiveMatches.length,
+                    ),
                   )
                 }
                 className="btn-tab"

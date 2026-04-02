@@ -13,6 +13,8 @@ interface TournamentProps {
 }
 
 interface TournamentItem {
+  id: number;
+  vlr_event_id: number;
   title: string;
   status: string;
   region: string;
@@ -27,8 +29,15 @@ interface MatchItem {
   match_series: string;
   team1: string;
   team2: string;
+  team1_logo?: string | null;
+  team2_logo?: string | null;
   unix_timestamp: string;
   time_until_match: string;
+}
+
+interface TournamentTeamLogo {
+  name: string;
+  logo: string;
 }
 
 function TournamentMetaIcon({ children }: { children: React.ReactNode }) {
@@ -44,13 +53,81 @@ function getDateLabel(dates: string, mode: "start" | "end"): string {
     return "-";
   }
 
-  const parts = dates.split("–").map((part) => part.trim());
+  const parts = dates.split(/\s*(?:â€“|–|-)\s*/).map((part) => part.trim());
 
   if (parts.length === 1) {
     return parts[0];
   }
 
   return mode === "start" ? parts[0] : parts[parts.length - 1];
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getTournamentHref(tournament: TournamentItem) {
+  const slug =
+    tournament.url_path?.split("/").filter(Boolean)[2] ||
+    slugify(tournament.title);
+  return `/tournaments/${tournament.vlr_event_id}/${slug}`;
+}
+
+function getTournamentTeamLogos(matches: MatchItem[], tournamentTitle: string) {
+  const seen = new Set<string>();
+  const logos: TournamentTeamLogo[] = [];
+
+  for (const match of matches) {
+    if (match.match_event !== tournamentTitle) {
+      continue;
+    }
+
+    const maybeAdd = (name?: string, logo?: string | null) => {
+      if (!name || !logo || seen.has(name)) {
+        return;
+      }
+
+      seen.add(name);
+      logos.push({ name, logo });
+    };
+
+    maybeAdd(match.team1, match.team1_logo);
+    maybeAdd(match.team2, match.team2_logo);
+
+    if (logos.length >= 3) {
+      break;
+    }
+  }
+
+  return logos;
+}
+
+function getTournamentTeams(matches: MatchItem[], tournamentTitle: string) {
+  const seen = new Set<string>();
+  const teams: TournamentTeamLogo[] = [];
+
+  for (const match of matches) {
+    if (match.match_event !== tournamentTitle) {
+      continue;
+    }
+
+    const maybeAdd = (name?: string, logo?: string | null) => {
+      if (!name || seen.has(name)) {
+        return;
+      }
+
+      seen.add(name);
+      teams.push({ name, logo: logo || "/valorantLogo.png" });
+    };
+
+    maybeAdd(match.team1, match.team1_logo);
+    maybeAdd(match.team2, match.team2_logo);
+  }
+
+  return teams;
 }
 
 function TournamentListRow({
@@ -63,16 +140,14 @@ function TournamentListRow({
   dateMode?: "start" | "end";
 }) {
   return (
-    <a
-      href={tournament.url_path}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      href={getTournamentHref(tournament)}
       className="grid grid-cols-[80px_minmax(0,1.8fr)_88px_120px_110px_28px] items-center gap-4 border-t border-[var(--color-border-subtle)] px-4 py-4 transition-colors hover:bg-[var(--color-bg-surface)]"
     >
       <div className="text-sm font-semibold text-[var(--color-text-muted)]">
         {getDateLabel(tournament.dates, dateMode)}
       </div>
-      <div className="flex items-center gap-4 min-w-0">
+      <div className="flex min-w-0 items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg">
           <img
             src={tournament.thumb || "/valorantLogo.png"}
@@ -101,8 +176,38 @@ function TournamentListRow({
       <div className="text-sm font-semibold text-[var(--color-text-muted)]">
         {getDateLabel(tournament.dates, "end")}
       </div>
-      <div className="text-right text-xl text-[var(--color-text-muted)]">›</div>
-    </a>
+      <div className="text-right text-xl text-[var(--color-text-muted)]">
+        {">"}
+      </div>
+    </Link>
+  );
+}
+
+function NewsListTournamentRow({ tournament }: { tournament: TournamentItem }) {
+  return (
+    <Link
+      href={getTournamentHref(tournament)}
+      className="group flex items-center justify-between rounded-lg p-2 transition hover:bg-[var(--color-bg-surface)]"
+    >
+      <div className="flex items-center gap-3">
+        <img
+          src={tournament.thumb || "/valorantLogo.png"}
+          alt={tournament.title}
+          className="h-10 w-10 rounded object-contain"
+        />
+        <div>
+          <h4 className="text-sm font-semibold text-[var(--color-text-primary)] transition-colors group-hover:text-[var(--color-primary)]">
+            {tournament.title}
+          </h4>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            {tournament.region} - {tournament.dates}
+          </p>
+        </div>
+      </div>
+      <span className="text-lg text-[var(--color-text-muted)] transition-colors group-hover:text-[var(--color-primary)]">
+        {">"}
+      </span>
+    </Link>
   );
 }
 
@@ -127,7 +232,7 @@ export default function Tournaments({
   });
 
   const { data: matchData = [] } = useValorantApiWithCache<MatchItem[]>({
-    key: `upcomingMatches-storage`,
+    key: "upcomingMatches-storage",
     url: matchesUrl,
     parse: (res) => res.data.segments,
   });
@@ -143,7 +248,7 @@ export default function Tournaments({
   return (
     <>
       {pageView === "home" && (
-        <div className="">
+        <div>
           {tournamentData?.slice(0, 1).map((tournament, i) => {
             const tournamentMatches =
               matchData?.filter((m) => m.match_event === tournament.title) ||
@@ -156,20 +261,23 @@ export default function Tournaments({
                     <div className="absolute right-4 top-4">
                       <span className="inline-flex items-center gap-1 rounded-xl bg-[#3a3a3a] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-white">
                         Featured Tournament
-                        <span className="text-[13px]">📌</span>
+                        <span className="text-[13px]">*</span>
                       </span>
                     </div>
 
-                    <div className="absolute right-6 top-2/3 text-3xl text-[var(--color-text-muted)] -translate-y-1/2">
-                      ›
+                    <div className="absolute right-6 top-2/3 -translate-y-1/2 text-3xl text-[var(--color-text-muted)]">
+                      {">"}
                     </div>
 
-                    <div className="flex items-center p-4 pr-24">
+                    <Link
+                      href={getTournamentHref(tournament)}
+                      className="flex items-center p-4 pr-24"
+                    >
                       <div className="mr-4 flex h-14 w-14 items-center justify-center rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)]">
                         <img
                           src={tournament.thumb || "/valorantLogo.png"}
                           alt="logo"
-                          className="w-8 h-8 object-contain"
+                          className="h-8 w-8 object-contain"
                         />
                       </div>
 
@@ -217,9 +325,8 @@ export default function Tournaments({
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   </div>
-                  {/* Matches for this tournament */}
                   {tournamentMatches.length > 0 && (
                     <div className="mt-4text-sm text-[var(--color-text-primary)]">
                       <div className="grid grid-cols-1 md:grid-cols-3">
@@ -235,13 +342,13 @@ export default function Tournaments({
 
                           return (
                             <div key={j} className="card overflow-hidden">
-                              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] bg-[var(--color-bg-surface)] px-3 py-2 border-b border-[var(--color-border-subtle)]">
-                                {match.match_series} • {day}
+                              <h4 className="border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] px-3 py-2 text-xs font-semibold text-[var(--color-text-muted)]">
+                                {match.match_series} - {day}
                               </h4>
 
                               <div className="flex">
                                 <div
-                                  className="flex flex-col justify-center items-center text-[var(--color-text-muted)] text-sm w-12"
+                                  className="flex w-12 flex-col items-center justify-center text-sm text-[var(--color-text-muted)]"
                                   style={{
                                     background:
                                       "linear-gradient(to bottom, #202020 50%, #181818 50%)",
@@ -258,13 +365,13 @@ export default function Tournaments({
                                 </div>
 
                                 <div className="flex-1">
-                                  <div className="flex justify-between items-center p-3 bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-card)] transition">
+                                  <div className="flex items-center justify-between bg-[var(--color-bg-surface-elevated)] p-3 transition hover:bg-[var(--color-bg-card)]">
                                     <span className="text-sm font-medium text-[var(--color-text-primary)]">
                                       {match.team1}
                                     </span>
                                   </div>
 
-                                  <div className="flex justify-between items-center p-3 bg-[var(--color-bg-card)] hover:bg-[var(--color-bg-surface-elevated)] transition">
+                                  <div className="flex items-center justify-between bg-[var(--color-bg-card)] p-3 transition hover:bg-[var(--color-bg-surface-elevated)]">
                                     <span className="text-sm font-medium text-[var(--color-text-muted)]">
                                       {match.team2}
                                     </span>
@@ -401,60 +508,100 @@ export default function Tournaments({
             }
 
             return (
-              <div className="overflow-x-auto">
-                <div className="min-w-[920px]">
-                  {filtered.map((tournament, i) => (
-                    <article
-                      key={i}
-                      className="grid grid-cols-[72px_minmax(0,1.9fr)_72px_126px_134px_150px] items-center min-h-[88px] border-b border-[var(--color-border-default)] bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-card)] transition-colors"
-                    >
-                      <div className="flex h-full items-center justify-center border-r border-[var(--color-border-default)]">
-                        <img
-                          src="/valorantLogo.png"
-                          alt="Valorant logo"
-                          className="h-9 w-9 object-contain opacity-65 grayscale brightness-90 contrast-125"
-                        />
-                      </div>
+              <div className="overflow-x-hidden">
+                <div className="min-w-0">
+                  {filtered.map((tournament, i) =>
+                    (() => {
+                      const teams = getTournamentTeams(
+                        matchData,
+                        tournament.title,
+                      );
+                      const visibleTeams = teams.slice(0, 3);
+                      const remainingTeams = Math.max(
+                        teams.length - visibleTeams.length,
+                        0,
+                      );
 
-                      <div className="flex items-center gap-4 px-5">
-                        <div className="flex h-11 w-11 items-center justify-center rounded">
-                          <img
-                            src={tournament.thumb || "/valorantLogo.png"}
-                            alt={tournament.title}
-                            className="h-9 w-9 object-contain"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="text-[15px] font-bold leading-5 text-[var(--color-text-primary)]">
-                            {tournament.title}
-                          </h3>
-                          <p className="mt-1 text-sm leading-5 text-[var(--color-text-muted)]">
-                            Valorant
-                          </p>
-                        </div>
-                      </div>
+                      return (
+                        <Link
+                          key={i}
+                          href={getTournamentHref(tournament)}
+                          className="grid min-h-[88px] grid-cols-[56px_minmax(0,2.2fr)_54px_82px_100px_172px] items-center border-b border-[var(--color-border-default)] bg-[var(--color-bg-surface-elevated)] transition-colors hover:bg-[var(--color-bg-card)]"
+                        >
+                          <div className="flex h-full items-center justify-center border-r border-[var(--color-border-default)]">
+                            <img
+                              src="/valorantLogo.png"
+                              alt="Valorant logo"
+                              className="h-8 w-8 object-contain opacity-65 grayscale brightness-90 contrast-125"
+                            />
+                          </div>
 
-                      <div className="border-l border-[var(--color-border-default)] px-4 text-center text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-                        {tournament.region || "-"}
-                      </div>
+                          <div className="flex min-w-0 items-center gap-3 px-4">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded">
+                              <img
+                                src={tournament.thumb || "/valorantLogo.png"}
+                                alt={tournament.title}
+                                className="h-8 w-8 object-contain"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="truncate text-[15px] font-bold leading-5 text-[var(--color-text-primary)]">
+                                {tournament.title}
+                              </h3>
+                              <p className="mt-1 truncate text-sm leading-5 text-[var(--color-text-muted)]">
+                                Valorant
+                              </p>
+                            </div>
+                          </div>
 
-                      <div className="border-l border-[var(--color-border-default)] px-4 text-center text-xs font-semibold text-[var(--color-text-secondary)]">
-                        {tournament.prize || "-"}
-                      </div>
+                          <div className="border-l border-[var(--color-border-default)] px-2 text-center text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+                            {tournament.region || "-"}
+                          </div>
 
-                      <div className="border-l border-[var(--color-border-default)] px-4 text-center text-xs font-semibold text-[var(--color-text-secondary)]">
-                        {tournament.dates}
-                      </div>
+                          <div className="border-l border-[var(--color-border-default)] px-1 text-center text-xs font-semibold text-[var(--color-text-secondary)]">
+                            {tournament.prize || "-"}
+                          </div>
 
-                      <div className="border-l border-[var(--color-border-default)] px-5">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="h-9 w-9 rounded-full border border-[var(--color-border-default)] bg-[var(--color-bg-surface)]" />
-                          <div className="h-9 w-9 rounded-full border border-[var(--color-border-default)] bg-[var(--color-bg-surface)]" />
-                          <div className="h-9 w-9 rounded-full border border-[var(--color-border-default)] bg-[var(--color-bg-surface)]" />
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                          <div className="border-l border-[var(--color-border-default)] px-1 text-center text-xs font-semibold text-[var(--color-text-secondary)]">
+                            {tournament.dates}
+                          </div>
+
+                          <div className="border-l border-[rgba(255,255,255,0.14)] pl-3 pr-3">
+                            <div className="flex items-center justify-start gap-2">
+                              {visibleTeams.length > 0
+                                ? visibleTeams.map((team) => (
+                                    <img
+                                      key={`${tournament.title}-${team.name}`}
+                                      src={team.logo}
+                                      alt={team.name}
+                                      className="h-9 w-9 rounded-full border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] object-contain p-1"
+                                    />
+                                  ))
+                                : [
+                                    <div
+                                      key="placeholder-1"
+                                      className="h-9 w-9 rounded-full border border-[var(--color-border-default)] bg-[var(--color-bg-surface)]"
+                                    />,
+                                    <div
+                                      key="placeholder-2"
+                                      className="h-9 w-9 rounded-full border border-[var(--color-border-default)] bg-[var(--color-bg-surface)]"
+                                    />,
+                                    <div
+                                      key="placeholder-3"
+                                      className="h-9 w-9 rounded-full border border-[var(--color-border-default)] bg-[var(--color-bg-surface)]"
+                                    />,
+                                  ]}
+                              {remainingTeams > 0 ? (
+                                <span className="ml-1 text-sm font-bold text-[var(--color-text-muted)]">
+                                  +{remainingTeams}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })(),
+                  )}
                 </div>
               </div>
             );
@@ -469,7 +616,6 @@ export default function Tournaments({
           </div>
 
           <div className="card-body space-y-6">
-            {/* Ongoing */}
             <div>
               <h3 className="label mb-3">Ongoing</h3>
               <div className="space-y-3">
@@ -477,34 +623,14 @@ export default function Tournaments({
                   ?.filter((t) => t.status === "ongoing")
                   .slice(0, 4)
                   .map((tournament, i) => (
-                    <a
-                      key={i}
-                      className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-bg-surface)] transition group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={tournament.thumb || "/valorantLogo.png"}
-                          alt={tournament.title}
-                          className="w-10 h-10 object-contain rounded"
-                        />
-                        <div>
-                          <h4 className="text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors">
-                            {tournament.title}
-                          </h4>
-                          <p className="text-xs text-[var(--color-text-muted)]">
-                            {tournament.region} • {tournament.dates}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[var(--color-text-muted)] text-lg group-hover:text-[var(--color-primary)] transition-colors">
-                        ›
-                      </span>
-                    </a>
+                    <NewsListTournamentRow
+                      key={`ongoing-${i}`}
+                      tournament={tournament}
+                    />
                   ))}
               </div>
             </div>
 
-            {/* Upcoming */}
             <div>
               <h3 className="label mb-3">Upcoming</h3>
               <div className="space-y-3">
@@ -512,34 +638,14 @@ export default function Tournaments({
                   ?.filter((t) => t.status === "upcoming")
                   .slice(0, 4)
                   .map((tournament, i) => (
-                    <a
-                      key={i}
-                      className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-bg-surface)] transition group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={tournament.thumb || "/valorantLogo.png"}
-                          alt={tournament.title}
-                          className="w-10 h-10 object-contain rounded"
-                        />
-                        <div>
-                          <h4 className="text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors">
-                            {tournament.title}
-                          </h4>
-                          <p className="text-xs text-[var(--color-text-muted)]">
-                            {tournament.region} • {tournament.dates}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[var(--color-text-muted)] text-lg group-hover:text-[var(--color-primary)] transition-colors">
-                        ›
-                      </span>
-                    </a>
+                    <NewsListTournamentRow
+                      key={`upcoming-${i}`}
+                      tournament={tournament}
+                    />
                   ))}
               </div>
             </div>
 
-            {/* Finished */}
             <div>
               <h3 className="label mb-3">Finished</h3>
               <div className="space-y-3">
@@ -547,29 +653,10 @@ export default function Tournaments({
                   ?.filter((t) => t.status === "finished")
                   .slice(0, 4)
                   .map((tournament, i) => (
-                    <a
-                      key={i}
-                      className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-bg-surface)] transition group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={tournament.thumb || "/valorantLogo.png"}
-                          alt={tournament.title}
-                          className="w-10 h-10 object-contain rounded"
-                        />
-                        <div>
-                          <h4 className="text-sm font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-primary)] transition-colors">
-                            {tournament.title}
-                          </h4>
-                          <p className="text-xs text-[var(--color-text-muted)]">
-                            {tournament.region} • {tournament.dates}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[var(--color-text-muted)] text-lg group-hover:text-[var(--color-primary)] transition-colors">
-                        ›
-                      </span>
-                    </a>
+                    <NewsListTournamentRow
+                      key={`finished-${i}`}
+                      tournament={tournament}
+                    />
                   ))}
               </div>
             </div>

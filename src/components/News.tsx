@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import useValorantApiWithCache from "../app/api/Valorant";
 
 interface NewsItem {
@@ -14,10 +14,28 @@ interface NewsItem {
 type NewsImg = {
   img: string;
   title: string;
+  url: string;
+  description?: string | null;
 };
 
 interface NewsProps {
   newsView: string;
+}
+
+function normalizeNewsTitle(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeNewsUrl(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\/[^/]+/i, "");
 }
 
 export default function News({ newsView }: NewsProps) {
@@ -43,7 +61,7 @@ export default function News({ newsView }: NewsProps) {
           ? data.articles[0]
           : null;
 
-        if (firstArticle?.img && firstArticle?.title) {
+        if (firstArticle?.img && firstArticle?.title && firstArticle?.url) {
           setArticleImg(firstArticle);
         }
       } catch (error) {
@@ -54,18 +72,39 @@ export default function News({ newsView }: NewsProps) {
     fetchNewsImg();
   }, []);
 
-  const featured =
+  const matchedFeaturedNews =
     newsData.find(
       (item) =>
         articleImg &&
-        item.title.trim().toLowerCase() === articleImg.title.trim().toLowerCase(),
-    ) || newsData[0];
+        (normalizeNewsUrl(item.url_path) === normalizeNewsUrl(articleImg.url) ||
+          normalizeNewsTitle(item.title) ===
+            normalizeNewsTitle(articleImg.title) ||
+          normalizeNewsTitle(item.title).includes(
+            normalizeNewsTitle(articleImg.title),
+          ) ||
+          normalizeNewsTitle(articleImg.title).includes(
+            normalizeNewsTitle(item.title),
+          )),
+    ) || null;
 
-  const rest = newsData.filter(
-    (item) =>
-      featured
-        ? item.title.trim().toLowerCase() !== featured.title.trim().toLowerCase()
-        : true,
+  const featured =
+    matchedFeaturedNews ||
+    (articleImg
+      ? {
+          title: articleImg.title,
+          description: articleImg.description || newsData[0]?.description || "",
+          date: newsData[0]?.date || "",
+          author: newsData[0]?.author || "",
+          url_path: articleImg.url,
+        }
+      : newsData[0]);
+
+  const featuredImage = articleImg?.img || null;
+
+  const rest = newsData.filter((item) =>
+    featured
+      ? normalizeNewsUrl(item.url_path) !== normalizeNewsUrl(featured.url_path)
+      : true,
   );
 
   if (loading) {
@@ -87,45 +126,61 @@ export default function News({ newsView }: NewsProps) {
   return (
     <section className="w-full text-[var(--color-text-primary)]">
       {newsView === "featured" ? (
-        <div className="relative card h-[366px] w-full overflow-hidden group">
-          <div className="relative h-[310px] w-full overflow-hidden">
-            {articleImg && (
+        <div className="group relative h-[366px] w-full overflow-hidden rounded-3xl border border-[var(--color-border-default)] bg-[var(--color-bg-card)]">
+          <div className="relative h-full w-full overflow-hidden">
+            {featuredImage ? (
               <div
-                className="absolute inset-0 bg-center bg-no-repeat bg-cover transition-transform duration-500 ease-in-out scale-100 group-hover:scale-105 group-hover:brightness-110"
-                style={{ backgroundImage: `url(${articleImg.img})` }}
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 ease-in-out group-hover:scale-105 group-hover:brightness-110"
+                style={{ backgroundImage: `url(${featuredImage})` }}
               />
+            ) : (
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,#252525,#111111)]" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-bg-surface)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(18,18,18,0.04)_0%,rgba(20,20,20,0.14)_42%,rgba(28,28,28,0.56)_68%,rgba(35,35,35,0.92)_86%,rgba(39,39,39,1)_100%)]" />
           </div>
 
-          <div className="relative -mt-24 px-6 pb-4">
-            <h2 className="card-title mb-2">{featured?.title}</h2>
-            <p className="body-text mb-2 line-clamp-3">{featured?.description}</p>
-            <div className="text-xs text-[var(--color-text-muted)] mb-4">
-              {featured?.date} • {featured?.author}
+          <div className="absolute right-6 top-1 z-10 md:right-7">
+            <div className="inline-flex rounded-xl border border-[rgba(255,255,255,0.14)] bg-[rgba(23,23,23,0.72)] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
+              Latest News
+            </div>
+          </div>
+
+          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-6 pt-24 md:px-7 md:pb-7">
+            <h2 className="mb-3 max-w-3xl text-[28px] font-bold leading-[1.15] text-white md:text-[30px]">
+              {featured?.title}
+            </h2>
+            {featured?.description ? (
+              <p className="mb-4 max-w-2xl line-clamp-2 text-[15px] leading-7 text-[rgba(227,232,238,0.82)]">
+                {featured.description}
+              </p>
+            ) : null}
+            <div className="mb-5 text-sm text-[rgba(214,220,226,0.72)]">
+              {featured?.date} - {featured?.author}
             </div>
             <a
               href={featured?.url_path}
               target="_blank"
               rel="noopener noreferrer"
-              className="link-accent"
+              className="inline-flex items-center text-base font-semibold text-[var(--color-primary)] transition-opacity hover:opacity-80"
             >
-              Read more →
+              Read more -<span className="ml-1">{">"}</span>
             </a>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {rest.slice(0, 6).map((item, i) => (
             <article
               key={i}
-              className="card hover:bg-[var(--color-bg-surface-elevated)] transition"
+              className="card transition hover:bg-[var(--color-bg-surface-elevated)]"
             >
               <div className="card-body">
                 <h3 className="card-title mb-2">{item.title}</h3>
-                <p className="body-text mb-2 line-clamp-3">{item.description}</p>
-                <div className="text-xs text-[var(--color-text-muted)] mb-4">
-                  {item.date} • {item.author}
+                <p className="body-text mb-2 line-clamp-3">
+                  {item.description}
+                </p>
+                <div className="mb-4 text-xs text-[var(--color-text-muted)]">
+                  {item.date} - {item.author}
                 </div>
                 <a
                   href={item.url_path}
@@ -133,7 +188,7 @@ export default function News({ newsView }: NewsProps) {
                   rel="noopener noreferrer"
                   className="link-accent"
                 >
-                  Read more →
+                  Read more -<span className="ml-1">{">"}</span>
                 </a>
               </div>
             </article>

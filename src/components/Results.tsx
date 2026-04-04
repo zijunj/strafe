@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 interface ResultsProps {
   pageView: string;
+  selectedTournament?: string;
 }
 
 interface MatchResult {
@@ -25,7 +26,7 @@ interface MatchResult {
 
 const RESULTS_PAGE_BATCH_SIZE = 12;
 
-export default function Results({ pageView }: ResultsProps) {
+export default function Results({ pageView, selectedTournament }: ResultsProps) {
   const resultsUrl = "storage/matches?status=completed&backgroundSync=0";
 
   const { data: resultData, loading } = useValorantApiWithCache<MatchResult[]>({
@@ -34,7 +35,12 @@ export default function Results({ pageView }: ResultsProps) {
     parse: (res) => res.data?.segments || [],
   });
   const [visibleCount, setVisibleCount] = useState(RESULTS_PAGE_BATCH_SIZE);
-  const sortedResults = [...(resultData || [])].sort(
+  const filteredResults = selectedTournament
+    ? (resultData || []).filter(
+        (item) => item.match_event === selectedTournament,
+      )
+    : resultData || [];
+  const sortedResults = [...filteredResults].sort(
     (a, b) =>
       parseTimeCompleted(b.date_label).getTime() -
       parseTimeCompleted(a.date_label).getTime(),
@@ -48,7 +54,7 @@ export default function Results({ pageView }: ResultsProps) {
     }
 
     setVisibleCount(RESULTS_PAGE_BATCH_SIZE);
-  }, [pageView, resultData]);
+  }, [pageView, filteredResults.length]);
 
   if (loading) {
     return (

@@ -8,6 +8,7 @@ import { getMatchStartTime } from "../app/utils/apiFunctions";
 interface MatchProps {
   pageView: string;
   setPageView?: (view: string) => void;
+  selectedTournament?: string;
 }
 
 interface MatchItem {
@@ -28,6 +29,7 @@ interface MatchItem {
 
 interface TournamentItem {
   title: string;
+  tier?: number | null;
   status: string;
   region: string;
   thumb: string;
@@ -144,7 +146,7 @@ function MatchRow({
   );
 }
 
-export default function Matches({ pageView }: MatchProps) {
+export default function Matches({ pageView, selectedTournament }: MatchProps) {
   const upcomingMatchesUrl = "storage/matches?status=upcoming&backgroundSync=0";
   const liveMatchesUrl = "storage/matches?status=live&backgroundSync=0";
   const tournamentsUrl = "storage/events?backgroundSync=0";
@@ -194,13 +196,18 @@ export default function Matches({ pageView }: MatchProps) {
       new Date(b.unix_timestamp).getTime()
     );
   });
+  const filteredMatchData = selectedTournament
+    ? matchData.filter((match) => match.match_event === selectedTournament)
+    : matchData;
 
   const [visibleCount, setVisibleCount] = useState(MATCHES_PAGE_BATCH_SIZE);
-  const liveMatches = matchData.filter((match) => match.status === "live");
-  const nonLiveMatches = matchData.filter((match) => match.status !== "live");
+  const liveMatches = filteredMatchData.filter((match) => match.status === "live");
+  const nonLiveMatches = filteredMatchData.filter(
+    (match) => match.status !== "live",
+  );
   const visibleMatchData =
     pageView === "match" ? nonLiveMatches.slice(0, visibleCount) : matchData;
-  const totalMatchCount = matchData.length;
+  const totalMatchCount = filteredMatchData.length;
 
   useEffect(() => {
     if (pageView !== "match") {

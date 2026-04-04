@@ -222,15 +222,22 @@ function TournamentListRow({
           />
         </div>
         <div className="min-w-0">
-          <h4
-            className={`truncate text-sm ${
-              emphasis
-                ? "font-bold text-[var(--color-text-primary)]"
-                : "font-semibold text-[var(--color-text-primary)]"
-            }`}
-          >
-            {tournament.title}
-          </h4>
+          <div className="flex items-center gap-2">
+            <h4
+              className={`truncate text-sm ${
+                emphasis
+                  ? "font-bold text-[var(--color-text-primary)]"
+                  : "font-semibold text-[var(--color-text-primary)]"
+              }`}
+            >
+              {tournament.title}
+            </h4>
+            {tournament.tier === 1 ? (
+              <span className="shrink-0 rounded-md bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-black">
+                Major
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
       <div className="text-sm font-semibold text-[var(--color-text-secondary)]">
@@ -284,7 +291,7 @@ export default function Tournaments({
 }: TournamentProps) {
   const tournamentsUrl =
     pageView === "home"
-      ? "storage/events?backgroundSync=0"
+      ? "storage/events?backgroundSync=0&limit=300"
       : pageView === "tournament"
         ? `storage/events?status=${tournamentView}&limit=300`
         : "storage/events";

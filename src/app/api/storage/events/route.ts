@@ -23,7 +23,26 @@ function normalizeEventStatus(status: string | null | undefined) {
     return "upcoming";
   }
 
-  return status === "completed" ? "finished" : status;
+  const lowerStatus = status.toLowerCase().trim();
+
+  if (
+    lowerStatus === "ongoing" ||
+    lowerStatus === "live" ||
+    lowerStatus === "in_progress" ||
+    lowerStatus === "in-progress"
+  ) {
+    return "ongoing";
+  }
+
+  if (lowerStatus === "completed" || lowerStatus === "finished") {
+    return "finished";
+  }
+
+  if (lowerStatus === "upcoming" || lowerStatus === "scheduled") {
+    return "upcoming";
+  }
+
+  return "upcoming";
 }
 
 function getStatusPriority(status: string) {

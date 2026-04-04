@@ -28,6 +28,35 @@ function deriveEventTier(title: string | null | undefined) {
   return /^VCT 2026\b/i.test(title.trim()) ? 1 : null;
 }
 
+function normalizeEventStatus(status: string | null | undefined): string {
+  if (!status) {
+    return "upcoming";
+  }
+
+  const lowerStatus = status.toLowerCase().trim();
+
+  // Map various status values from VLR API to normalized statuses
+  if (
+    lowerStatus === "ongoing" ||
+    lowerStatus === "live" ||
+    lowerStatus === "in_progress" ||
+    lowerStatus === "in-progress"
+  ) {
+    return "ongoing";
+  }
+
+  if (lowerStatus === "completed" || lowerStatus === "finished") {
+    return "completed"; // Store as "completed", will be converted to "finished" when returned
+  }
+
+  if (lowerStatus === "upcoming" || lowerStatus === "scheduled") {
+    return "upcoming";
+  }
+
+  // Default to upcoming for unknown statuses
+  return "upcoming";
+}
+
 interface VlrUpcomingMatchesResponse {
   data?: {
     segments?: VlrUpcomingMatchSegment[];
@@ -535,7 +564,7 @@ async function syncEvents() {
         vlr_event_id: vlrEventId,
         title: event.title,
         tier: deriveEventTier(event.title),
-        status: event.status,
+        status: normalizeEventStatus(event.status),
         region: event.region || null,
         dates: event.dates || null,
         prize: event.prize || null,

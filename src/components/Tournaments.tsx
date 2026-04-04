@@ -33,6 +33,7 @@ interface MatchItem {
   team2: string;
   team1_logo?: string | null;
   team2_logo?: string | null;
+  status?: string;
   unix_timestamp: string;
   time_until_match: string;
 }
@@ -139,31 +140,60 @@ function getTournamentTeams(matches: MatchItem[], tournamentTitle: string) {
 }
 
 function getTournamentTeamsByEvent(matches: MatchItem[], tournament: TournamentItem) {
-  const seen = new Set<string>();
-  const teams: TournamentTeamLogo[] = [];
+  const teamsByName = new Map<string, TournamentTeamLogo>();
+  const orderedNames: string[] = [];
+  const matchesForTournament = matches
+    .filter(
+      (match) =>
+        match.event_id === tournament.id || match.match_event === tournament.title,
+    )
+    .sort((a, b) => {
+      const getStatusPriority = (status?: string) => {
+        if (status === "completed") {
+          return 0;
+        }
 
-  for (const match of matches) {
-    if (
-      match.event_id !== tournament.id &&
-      match.match_event !== tournament.title
-    ) {
-      continue;
-    }
+        if (status === "live") {
+          return 1;
+        }
 
+        if (status === "upcoming") {
+          return 2;
+        }
+
+        return 3;
+      };
+
+      return getStatusPriority(a.status) - getStatusPriority(b.status);
+    });
+
+  for (const match of matchesForTournament) {
     const maybeAdd = (name?: string, logo?: string | null) => {
-      if (!name || seen.has(name)) {
+      if (!name) {
         return;
       }
 
-      seen.add(name);
-      teams.push({ name, logo: logo || "/valorantLogo.png" });
+      const current = teamsByName.get(name);
+      const nextLogo = logo || "/valorantLogo.png";
+
+      if (!current) {
+        orderedNames.push(name);
+        teamsByName.set(name, { name, logo: nextLogo });
+        return;
+      }
+
+      if (current.logo === "/valorantLogo.png" && logo) {
+        teamsByName.set(name, { name, logo });
+      }
     };
 
     maybeAdd(match.team1, match.team1_logo);
     maybeAdd(match.team2, match.team2_logo);
   }
 
-  return teams;
+  return orderedNames
+    .map((name) => teamsByName.get(name))
+    .filter((team): team is TournamentTeamLogo => Boolean(team));
 }
 
 function TournamentListRow({
@@ -253,13 +283,21 @@ export default function Tournaments({
   setTournamentView,
 }: TournamentProps) {
   const tournamentsUrl =
-    pageView === "home" ? "storage/events?backgroundSync=0" : "storage/events";
+    pageView === "home"
+      ? "storage/events?backgroundSync=0"
+      : pageView === "tournament"
+        ? `storage/events?status=${tournamentView}&limit=300`
+        : "storage/events";
   const matchesUrl =
     pageView === "home"
       ? "storage/matches?status=upcoming&backgroundSync=0"
       : pageView === "tournament"
         ? "storage/matches?limit=500"
         : "storage/matches?status=upcoming";
+  const tournamentsCacheKey =
+    pageView === "tournament"
+      ? `tournaments-storage-${tournamentView}`
+      : "tournaments-storage";
   const matchesCacheKey =
     pageView === "tournament"
       ? "tournamentMatches-storage"
@@ -268,7 +306,7 @@ export default function Tournaments({
   const { data: tournamentData, loading } = useValorantApiWithCache<
     TournamentItem[]
   >({
-    key: "tournaments-storage",
+    key: tournamentsCacheKey,
     url: tournamentsUrl,
     parse: (res) => res.data.segments,
   });

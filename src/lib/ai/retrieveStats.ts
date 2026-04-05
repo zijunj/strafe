@@ -421,7 +421,11 @@ async function retrieveMatchesFromSupabase(parsedQuery: ParsedQuery) {
 function getStoredRegions(region?: ParsedQuery["filters"]["region"]): string[] {
   switch (region) {
     case "emea":
+    case "eu":
       return ["emea", "eu"];
+    case "pacific":
+    case "ap":
+      return ["pacific", "ap"];
     case "global":
     case undefined:
       return [];
@@ -726,13 +730,20 @@ function getEventStatMetricColumn(metric: ParsedQuery["metric"]): string {
 }
 
 async function retrieveStatsFromSupabase(
-  parsedQuery: ParsedQuery
-): Promise<RetrievedStatRow[] | null> {
+  parsedQuery: ParsedQuery,
+  options?: {
+    timespanOverride?: ParsedQuery["filters"]["timespanDays"];
+  }
+): Promise<{
+  rows: RetrievedStatRow[] | null;
+  appliedTimespanDays: 30 | 60 | 90 | "all";
+}> {
   try {
     const supabase = createServiceRoleSupabaseClient();
     const region = parsedQuery.filters.region;
     const storedRegions = getStoredRegions(region);
-    const timespanDays = parsedQuery.filters.timespanDays ?? 30;
+    const timespanDays =
+      options?.timespanOverride ?? parsedQuery.filters.timespanDays ?? 30;
     const eventGroupId = parsedQuery.filters.eventGroupId ?? null;
     const requestedPlayers = getRequestedPlayers(parsedQuery);
     const metricColumn = getSupabaseMetricColumn(parsedQuery.metric);
@@ -786,22 +797,95 @@ async function retrieveStatsFromSupabase(
 
     if (error) {
       console.error("Supabase retrieveStats error:", error.message);
-      return null;
+      return {
+        rows: null,
+        appliedTimespanDays: timespanDays,
+      };
     }
 
     if (!data?.length) {
-      return [];
+      return {
+        rows: [],
+        appliedTimespanDays: timespanDays,
+      };
     }
 
     const mappedRows = data.map((row) =>
       mapSupabaseRow(row as AggregatedPlayerStatsRow)
     );
 
-    return applyLocalFilters(mappedRows, parsedQuery);
+    return {
+      rows: applyLocalFilters(mappedRows, parsedQuery),
+      appliedTimespanDays: timespanDays,
+    };
   } catch (error: any) {
     console.error("Supabase client error:", error.message);
-    return null;
+    return {
+      rows: null,
+      appliedTimespanDays:
+        options?.timespanOverride ?? parsedQuery.filters.timespanDays ?? 30,
+    };
   }
+}
+
+function getTimespanFallbackOrder(
+  requestedTimespan: ParsedQuery["filters"]["timespanDays"] | undefined
+) {
+  const normalized = requestedTimespan ?? 30;
+
+  if (normalized === "all") {
+    return ["all"] as const;
+  }
+
+  const orderedTimespans: Array<30 | 60 | 90 | "all"> = [30, 60, 90, "all"];
+  const startIndex = orderedTimespans.indexOf(normalized);
+
+  return startIndex === -1
+    ? orderedTimespans
+    : orderedTimespans.slice(startIndex);
+}
+
+async function retrieveStatsFromSupabaseWithFallback(
+  parsedQuery: ParsedQuery
+): Promise<{
+  rows: RetrievedStatRow[] | null;
+  appliedTimespanDays: 30 | 60 | 90 | "all";
+}> {
+  const shouldUseFallbackChain =
+    !parsedQuery.filters.player &&
+    !(parsedQuery.filters.players?.length) &&
+    !parsedQuery.filters.team &&
+    !parsedQuery.filters.eventName;
+
+  const fallbackOrder = shouldUseFallbackChain
+    ? getTimespanFallbackOrder(parsedQuery.filters.timespanDays)
+    : [parsedQuery.filters.timespanDays ?? 30];
+
+  let lastResult: {
+    rows: RetrievedStatRow[] | null;
+    appliedTimespanDays: 30 | 60 | 90 | "all";
+  } = {
+    rows: [],
+    appliedTimespanDays: parsedQuery.filters.timespanDays ?? 30,
+  };
+
+  for (const timespan of fallbackOrder) {
+    const result = await retrieveStatsFromSupabase(parsedQuery, {
+      timespanOverride: timespan,
+    });
+
+    if (result.rows === null) {
+      return result;
+    }
+
+    if (result.rows.length > 0) {
+      return result;
+    }
+
+    lastResult = result;
+  }
+
+  return lastResult;
 }
 
 async function findReferencedEvent(parsedQuery: ParsedQuery) {
@@ -1196,7 +1280,9 @@ export async function retrieveStats(
     }
   }
 
-  const supabaseRows = await retrieveStatsFromSupabase(parsedQuery);
+  const supabaseResult = await retrieveStatsFromSupabaseWithFallback(parsedQuery);
+  const supabaseRows = supabaseResult.rows;
+  const appliedTimespanDays = supabaseResult.appliedTimespanDays;
 
   const rows =
     supabaseRows !== null
@@ -1219,7 +1305,8 @@ export async function retrieveStats(
       source:
         supabaseRows !== null || !canUseMockFallback ? "supabase" : "mock",
       appliedRegion: region,
-      appliedTimespanDays: timespanDays,
+      appliedTimespanDays:
+        supabaseRows !== null ? appliedTimespanDays : timespanDays,
       appliedEventGroupId: eventGroupId,
       appliedEventName: referencedEvent?.title ?? null,
       rowCount: rows.length,

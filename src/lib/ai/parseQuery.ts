@@ -1,5 +1,6 @@
 import {
   getEventGroupIdForTier,
+  normalizeAiRegion,
   type QueryPlan,
 } from "./queryPlan";
 
@@ -58,9 +59,13 @@ const regionMatchers: Array<{
   patterns: RegExp[];
 }> = [
   { region: "na", patterns: [/north america/i, /\bna\b/i] },
-  { region: "emea", patterns: [/\bemea\b/i, /\beu\b/i, /europe/i] },
-  { region: "pacific", patterns: [/\bpacific\b/i, /asia.?pacific/i] },
+  { region: "eu", patterns: [/\bemea\b/i, /\beu\b/i, /europe/i] },
+  { region: "ap", patterns: [/\bpacific\b/i, /asia.?pacific/i, /\bap\b/i] },
+  { region: "cn", patterns: [/\bchina\b/i, /\bcn\b/i] },
+  { region: "kr", patterns: [/\bkorea\b/i, /\bkr\b/i] },
+  { region: "jp", patterns: [/\bjapan\b/i, /\bjp\b/i] },
   { region: "br", patterns: [/\bbrazil\b/i, /\bbr\b/i] },
+  { region: "oce", patterns: [/\boce\b/i, /oceania/i] },
 ];
 
 const timespanMatchers: Array<{
@@ -350,7 +355,11 @@ export function buildParsedQueryFromPlan(
 ): ParsedQuery {
   const normalizedQuestion = question.trim().replace(/\s+/g, " ");
   const comparisonPlayers = plan.filters.players.length > 1 ? plan.filters.players : undefined;
-  const eventGroupId = getEventGroupIdForTier(plan.filters.tier);
+  const inferredRole = parseRole(normalizedQuestion);
+  const inferredTier = parseTier(normalizedQuestion);
+  const resolvedTier = inferredTier ?? null;
+  const eventGroupId = getEventGroupIdForTier(resolvedTier);
+  const normalizedRegion = normalizeAiRegion(plan.filters.region);
 
   return {
     rawQuestion: question,
@@ -362,14 +371,14 @@ export function buildParsedQueryFromPlan(
     sort: plan.sort,
     limit: plan.limit,
     filters: {
-      region: plan.filters.region,
+      region: normalizedRegion,
       timespanDays: plan.filters.timespanDays,
-      tier: plan.filters.tier,
+      tier: resolvedTier,
       eventGroupId,
       eventName: plan.filters.eventName,
       player: plan.filters.player,
       players: plan.filters.players,
-      role: plan.filters.role,
+      role: plan.filters.role ?? inferredRole,
       agent: plan.filters.agent,
       minRounds: plan.filters.minRounds,
       team: plan.filters.team,

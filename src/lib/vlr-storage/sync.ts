@@ -209,6 +209,7 @@ const DEFAULT_SYNC_FLAGS = {
 const UPSTREAM_FETCH_TIMEOUT_MS = 15000;
 const UPSTREAM_FETCH_MAX_RETRIES = 3;
 const MATCH_DETAIL_REQUEST_DELAY_MS = 600;
+const UPCOMING_MATCH_STALE_BUFFER_HOURS = 6;
 
 function getBaseUrl() {
   const baseUrl = process.env.VLR_API_BASE_URL;
@@ -319,6 +320,26 @@ function parseTimestamp(raw: string | null | undefined): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function reconcileMatchStatus(
+  status: string,
+  scheduledAt: string | null
+): string {
+  if (status !== "upcoming" || !scheduledAt) {
+    return status;
+  }
+
+  const scheduledTime = new Date(scheduledAt).getTime();
+
+  if (Number.isNaN(scheduledTime)) {
+    return status;
+  }
+
+  const staleThreshold =
+    Date.now() - UPCOMING_MATCH_STALE_BUFFER_HOURS * 60 * 60 * 1000;
+
+  return scheduledTime <= staleThreshold ? "completed" : status;
+}
+
 function normalizeNumericString(value: string | null | undefined): number | null {
   if (!value) {
     return null;
@@ -368,6 +389,8 @@ function normalizeUpcomingMatch(segment: VlrUpcomingMatchSegment): NormalizedMat
     return null;
   }
 
+  const scheduledAt = parseTimestamp(segment.unix_timestamp);
+
   return {
     vlr_match_id: parsedPage.vlrMatchId,
     slug: parsedPage.slug,
@@ -379,11 +402,11 @@ function normalizeUpcomingMatch(segment: VlrUpcomingMatchSegment): NormalizedMat
     team_2_score: null,
     team_1_is_winner: null,
     team_2_is_winner: null,
-    scheduled_at: parseTimestamp(segment.unix_timestamp),
+    scheduled_at: scheduledAt,
     date_label: segment.time_until_match || null,
     match_url: parsedPage.matchUrl,
     vods: [],
-    status: "upcoming",
+    status: reconcileMatchStatus("upcoming", scheduledAt),
     raw_payload: segment as unknown as Record<string, unknown>,
   };
 }

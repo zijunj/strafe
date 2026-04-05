@@ -37,11 +37,35 @@ export const queryPlanMetricValues = [
 
 export const queryPlanRegionValues = [
   "na",
+  "eu",
+  "ap",
+  "cn",
+  "kr",
+  "jp",
   "emea",
   "pacific",
   "br",
+  "col",
+  "la",
+  "la-n",
+  "la-s",
+  "mn",
+  "oce",
   "global",
 ] as const;
+
+export function normalizeAiRegion(
+  region: (typeof queryPlanRegionValues)[number] | null | undefined
+) {
+  switch (region) {
+    case "emea":
+      return "eu";
+    case "pacific":
+      return "ap";
+    default:
+      return region ?? "global";
+  }
+}
 
 export const queryPlanRoleValues = [
   "duelist",
@@ -147,6 +171,7 @@ Return JSON only.
 Do not answer the user's question.
 Do not generate SQL, pseudo-SQL, or database syntax.
 Use only the allowed enum values exactly.
+Always include the top-level keys: intent, entity, metric, sort, limit, filters.
 If the user asks for "best" players, default metric to "rating".
 If the user asks for "top N", use that limit.
 If the user asks about duelists/controllers/initiators/sentinels, use the role field.
@@ -173,6 +198,80 @@ function extractJsonObject(content: string) {
   }
 
   return candidate.slice(firstBrace, lastBrace + 1);
+}
+
+function inferIntentFromPartialPlan(parsed: any): QueryPlan["intent"] {
+  const filters = parsed?.filters ?? {};
+
+  if (
+    filters.matchTeam ||
+    filters.opponentTeam ||
+    filters.status ||
+    filters.datePreset
+  ) {
+    return "match_lookup";
+  }
+
+  if (filters.eventName) {
+    return "event_lookup";
+  }
+
+  if (Array.isArray(filters.players) && filters.players.length > 1) {
+    return "comparison";
+  }
+
+  if (filters.player) {
+    return "player_lookup";
+  }
+
+  if (filters.team) {
+    return "team_lookup";
+  }
+
+  return "leaderboard";
+}
+
+function inferEntityFromIntent(
+  intent: QueryPlan["intent"],
+  parsed: any
+): QueryPlan["entity"] {
+  if (parsed?.entity && queryPlanEntityValues.includes(parsed.entity)) {
+    return parsed.entity;
+  }
+
+  switch (intent) {
+    case "match_lookup":
+      return "match";
+    case "event_lookup":
+      return "event";
+    case "team_lookup":
+      return "team";
+    case "comparison":
+    case "player_lookup":
+    case "leaderboard":
+      return "player";
+    default:
+      return "general";
+  }
+}
+
+function normalizePlannerOutput(parsed: any): QueryPlan {
+  const intent = queryPlanIntentValues.includes(parsed?.intent)
+    ? parsed.intent
+    : inferIntentFromPartialPlan(parsed);
+  const entity = inferEntityFromIntent(intent, parsed);
+
+  return {
+    intent,
+    entity,
+    metric: parsed?.metric,
+    sort: parsed?.sort,
+    limit: parsed?.limit,
+    filters:
+      parsed?.filters && typeof parsed.filters === "object"
+        ? parsed.filters
+        : {},
+  } as QueryPlan;
 }
 
 export async function planQuestion(question: string): Promise<QueryPlan | null> {
@@ -205,8 +304,9 @@ export async function planQuestion(question: string): Promise<QueryPlan | null> 
       response.data?.choices?.[0]?.message?.content ??
       "";
     const parsed = JSON.parse(extractJsonObject(content));
+    const normalized = normalizePlannerOutput(parsed);
 
-    return queryPlanSchema.parse(parsed);
+    return queryPlanSchema.parse(normalized);
   } catch (error) {
     console.error("Planner failed:", error);
     return null;

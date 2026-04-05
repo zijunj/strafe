@@ -1,8 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 import { formatAnswer } from "@/lib/ai/formatAnswer";
-import { parseQuery } from "@/lib/ai/parseQuery";
+import { buildParsedQueryFromPlan, parseQuery } from "@/lib/ai/parseQuery";
+import { planQuestion } from "@/lib/ai/queryPlan";
 import { retrieveStats } from "@/lib/ai/retrieveStats";
+
+async function generateAnswerFromContext(params: {
+  question: string;
+  parsedQuery: ReturnType<typeof parseQuery>;
+  retrievedStats: Awaited<ReturnType<typeof retrieveStats>>;
+}) {
+  const systemPrompt = `
+You are a Valorant stats assistant modeled after a clean stats-search experience.
+Answer only from the supplied structured data.
+If the answer is not fully supported, say so clearly.
+Keep the answer concise, confident, and useful.
+`;
+
+  const userPrompt = `
+Question:
+${params.question}
+
+Parsed query:
+${JSON.stringify(params.parsedQuery, null, 2)}
+
+Retrieved context:
+${JSON.stringify(params.retrievedStats.contextData, null, 2)}
+
+Retrieved data:
+${JSON.stringify(params.retrievedStats.rows, null, 2)}
+`;
+
+  const response = await axios.post(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 250,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return (
+    response.data?.choices?.[0]?.message?.content ??
+    "I could not generate an answer for that question."
+  );
+}
 
 function formatMatchDate(value?: string | null) {
   if (!value) {
@@ -111,56 +162,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const parsedQuery = parseQuery(question);
+    const plannedQuery = await planQuestion(question);
+    const parsedQuery = plannedQuery
+      ? buildParsedQueryFromPlan(plannedQuery, question)
+      : parseQuery(question);
     const retrievedStats = await retrieveStats(parsedQuery);
     const matchAnswer =
       parsedQuery.entity === "match"
         ? buildMatchAnswer(question, parsedQuery, retrievedStats.contextData.matches ?? [])
         : null;
 
-    const systemPrompt = `
-You are a Valorant stats assistant modeled after a clean stats-search experience.
-Answer only from the supplied structured data.
-If the answer is not fully supported, say so clearly.
-Keep the answer concise, confident, and useful.
-`;
-
-    const userPrompt = `
-Question:
-${question}
-
-Parsed query:
-${JSON.stringify(parsedQuery, null, 2)}
-
-Retrieved context:
-${JSON.stringify(retrievedStats.contextData, null, 2)}
-
-Retrieved data:
-${JSON.stringify(retrievedStats.rows, null, 2)}
-`;
-
     const answer = matchAnswer
       ? matchAnswer
-      : (
-          await axios.post(
-            "https://api.openai.com/v1/chat/completions",
-            {
-              model: "gpt-4o-mini",
-              messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
-              ],
-              max_tokens: 250,
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-            }
-          )
-        ).data?.choices?.[0]?.message?.content ??
-        "I could not generate an answer for that question.";
+      : await generateAnswerFromContext({
+          question,
+          parsedQuery,
+          retrievedStats,
+        });
 
     return NextResponse.json(
       formatAnswer({

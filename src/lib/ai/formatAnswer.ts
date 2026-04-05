@@ -2,7 +2,13 @@ import type { ParsedQuery } from "./parseQuery";
 import type { RetrievedStatRow, RetrievedStatsResult } from "./retrieveStats";
 
 export interface AIResponseUIHints {
-  intent: "comparison" | "player_lookup" | "team_lookup" | "leaderboard" | "match_lookup";
+  intent:
+    | "comparison"
+    | "player_lookup"
+    | "team_lookup"
+    | "leaderboard"
+    | "match_lookup"
+    | "event_lookup";
   title: string;
   highlightMetric: ParsedQuery["metric"];
   highlightPlayers?: string[];
@@ -32,6 +38,8 @@ function buildUIHints(params: {
     parsedQuery.metric === "general"
       ? "stats"
       : parsedQuery.metric.replace(/_/g, " ");
+  const role = parsedQuery.filters.role;
+  const tier = parsedQuery.filters.tier;
 
   if (comparisonPlayers?.length) {
     return {
@@ -96,9 +104,29 @@ function buildUIHints(params: {
     };
   }
 
+  if (parsedQuery.intent === "event_lookup" || parsedQuery.entity === "event") {
+    return {
+      intent: "event_lookup",
+      title: parsedQuery.filters.eventName || "Event lookup",
+      highlightMetric: parsedQuery.metric,
+      showSupportingData: supportingData.length > 0,
+      suggestedFollowUps: [
+        "What matches are coming up for this event?",
+        "Who has the best rating at this event?",
+      ],
+    };
+  }
+
   return {
     intent: "leaderboard",
-    title: "Top player stats",
+    title:
+      role && tier
+        ? `Top tier ${tier} ${role} stats`
+        : role
+          ? `Top ${role} stats`
+          : tier
+            ? `Top tier ${tier} stats`
+            : "Top player stats",
     highlightMetric: parsedQuery.metric,
     showSupportingData: supportingData.length > 0,
     suggestedFollowUps: [

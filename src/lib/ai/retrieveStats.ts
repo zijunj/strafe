@@ -1,5 +1,6 @@
 import type { ParsedQuery } from "./parseQuery";
 import { createServiceRoleSupabaseClient } from "../supabase/server";
+import { roleAgentMap } from "./queryPlan";
 
 export interface RetrievedStatRow {
   id: string;
@@ -83,6 +84,7 @@ interface StoredEventRow {
   id: number;
   vlr_event_id: number;
   title: string;
+  tier?: number | null;
   status: string;
   region: string | null;
   dates: string | null;
@@ -355,16 +357,24 @@ async function retrieveMatchesFromSupabase(parsedQuery: ParsedQuery) {
     }
 
     if (requestedStatus === "live") {
-      query = query.order("scheduled_at", { ascending: true, nullsFirst: false }).limit(20);
+      query = query
+        .order("scheduled_at", {
+          ascending: parsedQuery.sort === "asc",
+          nullsFirst: false,
+        })
+        .limit(Math.max(parsedQuery.limit, 20));
     } else if (parsedQuery.filters.datePreset === "next") {
       query = query
         .eq("status", "upcoming")
         .order("scheduled_at", { ascending: true, nullsFirst: false })
-        .limit(10);
+        .limit(Math.max(parsedQuery.limit, 10));
     } else {
       query = query
-        .order("scheduled_at", { ascending: true, nullsFirst: false })
-        .limit(50);
+        .order("scheduled_at", {
+          ascending: parsedQuery.sort === "asc",
+          nullsFirst: false,
+        })
+        .limit(Math.max(parsedQuery.limit, 50));
     }
 
     const { data, error } = await query;
@@ -375,12 +385,18 @@ async function retrieveMatchesFromSupabase(parsedQuery: ParsedQuery) {
     }
 
     const rows = ((data ?? []) as StoredMatchRow[]).filter((row) =>
-      matchesRequestedTeams(row, requestedTeam, requestedOpponent)
+      matchesRequestedTeams(
+        row,
+        requestedTeam ?? undefined,
+        requestedOpponent ?? undefined
+      )
     );
 
     const sortedRows = sortMatchRows(rows, parsedQuery.filters.datePreset);
     const limitedRows =
-      parsedQuery.filters.datePreset === "next" ? sortedRows.slice(0, 1) : sortedRows;
+      parsedQuery.filters.datePreset === "next"
+        ? sortedRows.slice(0, 1)
+        : sortedRows.slice(0, parsedQuery.limit);
 
     return limitedRows.map((row) => ({
       vlrMatchId: row.vlr_match_id,
@@ -493,6 +509,13 @@ function getEventRegionHints(question: string) {
   return null;
 }
 
+function isTierScopedQuery(parsedQuery: ParsedQuery) {
+  return (
+    parsedQuery.filters.tier != null &&
+    parsedQuery.filters.eventGroupId == null
+  );
+}
+
 function mapSupabaseRow(row: AggregatedPlayerStatsRow): RetrievedStatRow {
   return {
     id: row.id,
@@ -549,6 +572,7 @@ function applyLocalFilters(
   const playerFilters = getRequestedPlayers(parsedQuery);
   const teamFilter = parsedQuery.filters.team?.toLowerCase();
   const agentFilter = parsedQuery.filters.agent?.toLowerCase();
+  const roleFilter = parsedQuery.filters.role;
   const minRounds = parsedQuery.filters.minRounds;
 
   let filteredRows = rows;
@@ -579,6 +603,13 @@ function applyLocalFilters(
     );
   }
 
+  if (roleFilter) {
+    const roleAgents = roleAgentMap[roleFilter as keyof typeof roleAgentMap];
+    filteredRows = filteredRows.filter((row) =>
+      row.agents.some((agent) => roleAgents.includes(agent.toLowerCase()))
+    );
+  }
+
   if (typeof minRounds === "number") {
     filteredRows = filteredRows.filter((row) => row.roundsPlayed >= minRounds);
   }
@@ -589,6 +620,7 @@ function applyLocalFilters(
 function getRequestedPlayers(parsedQuery: ParsedQuery): string[] {
   const requestedPlayers = [
     parsedQuery.filters.player,
+    ...(parsedQuery.filters.players ?? []),
     ...(parsedQuery.comparisonPlayers ?? []),
   ];
 
@@ -712,7 +744,7 @@ async function retrieveStatsFromSupabase(
       .select(
         "id, player_name, team_name, region, timespan_days, agents, rating, acs, kd, kast_percentage, adr, hs_percentage, kills_per_round, assists_per_round, first_kills_per_round, first_deaths_per_round, clutch_success_percentage, rounds_played"
       )
-      .order(metricColumn, { ascending: false });
+      .order(metricColumn, { ascending: parsedQuery.sort === "asc" });
 
     if (timespanDays === "all") {
       query = query.in("timespan_days", [0]);
@@ -747,7 +779,7 @@ async function retrieveStatsFromSupabase(
         .join(",");
       query = query.or(orFilters);
     } else {
-      query = query.limit(200);
+      query = query.limit(Math.max(parsedQuery.limit, 50));
     }
 
     const { data, error } = await query;
@@ -772,12 +804,12 @@ async function retrieveStatsFromSupabase(
   }
 }
 
-async function findReferencedEvent(question: string) {
+async function findReferencedEvent(parsedQuery: ParsedQuery) {
   try {
     const supabase = createServiceRoleSupabaseClient();
     const { data, error } = await supabase
       .from("events")
-      .select("id, vlr_event_id, title, status, region, dates, prize")
+      .select("id, vlr_event_id, title, tier, status, region, dates, prize")
       .limit(300);
 
     if (error) {
@@ -785,9 +817,11 @@ async function findReferencedEvent(question: string) {
       return null;
     }
 
-    const normalizedQuestion = normalizeForSearch(question);
-    const prioritizedPhrases = getEventSearchPhrases(question);
-    const regionHints = getEventRegionHints(question);
+    const searchQuestion =
+      parsedQuery.filters.eventName || parsedQuery.normalizedQuestion;
+    const normalizedQuestion = normalizeForSearch(searchQuestion);
+    const prioritizedPhrases = getEventSearchPhrases(searchQuestion);
+    const regionHints = getEventRegionHints(searchQuestion);
     let bestMatch: StoredEventRow | null = null;
     let bestScore = 0;
 
@@ -884,7 +918,7 @@ async function retrieveEventStatsFromSupabase(params: {
         "id, player_name, team_name, agents, rounds_played, rating, average_combat_score, kill_deaths, kill_assists_survived_traded, average_damage_per_round, kills_per_round, assists_per_round, first_kills_per_round, first_deaths_per_round, headshot_percentage, clutch_success_percentage"
       )
       .eq("event_id", params.event.id)
-      .order(metricColumn, { ascending: false });
+      .order(metricColumn, { ascending: params.parsedQuery.sort === "asc" });
 
     if (teamFilter) {
       query = query.ilike("team_name", `%${teamFilter}%`);
@@ -902,7 +936,7 @@ async function retrieveEventStatsFromSupabase(params: {
         .join(",");
       query = query.or(orFilters);
     } else {
-      query = query.limit(50);
+      query = query.limit(Math.max(params.parsedQuery.limit, 25));
     }
 
     const { data, error } = await query;
@@ -919,6 +953,89 @@ async function retrieveEventStatsFromSupabase(params: {
     return applyLocalFilters(mappedRows, params.parsedQuery);
   } catch (error: any) {
     console.error("Event stats storage lookup failed:", error.message);
+    return null;
+  }
+}
+
+async function retrieveTierScopedStatsFromSupabase(
+  parsedQuery: ParsedQuery
+): Promise<RetrievedStatRow[] | null> {
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const requestedTier = parsedQuery.filters.tier;
+
+    if (!requestedTier) {
+      return null;
+    }
+
+    const { data: eventRows, error: eventError } = await supabase
+      .from("events")
+      .select("id, title, region, tier")
+      .eq("tier", requestedTier)
+      .limit(300);
+
+    if (eventError) {
+      console.error("Tier-scoped event lookup error:", eventError.message);
+      return null;
+    }
+
+    const matchingEvents = (eventRows ?? []) as Array<{
+      id: number;
+      title: string;
+      region: string | null;
+      tier?: number | null;
+    }>;
+
+    if (!matchingEvents.length) {
+      return [];
+    }
+
+    const eventIds = matchingEvents.map((event) => event.id);
+    const requestedPlayers = getRequestedPlayers(parsedQuery);
+    const teamFilter = parsedQuery.filters.team?.trim();
+    const minRounds = parsedQuery.filters.minRounds;
+    const metricColumn = getEventStatMetricColumn(parsedQuery.metric);
+
+    let query = supabase
+      .from("event_player_stats")
+      .select(
+        "id, player_name, team_name, agents, rounds_played, rating, average_combat_score, kill_deaths, kill_assists_survived_traded, average_damage_per_round, kills_per_round, assists_per_round, first_kills_per_round, first_deaths_per_round, headshot_percentage, clutch_success_percentage"
+      )
+      .in("event_id", eventIds)
+      .order(metricColumn, { ascending: parsedQuery.sort === "asc" })
+      .limit(500);
+
+    if (teamFilter) {
+      query = query.ilike("team_name", `%${teamFilter}%`);
+    }
+
+    if (typeof minRounds === "number") {
+      query = query.gte("rounds_played", minRounds);
+    }
+
+    if (requestedPlayers.length === 1) {
+      query = query.ilike("player_name", `%${requestedPlayers[0]}%`);
+    } else if (requestedPlayers.length > 1) {
+      const orFilters = requestedPlayers
+        .map((player) => `player_name.ilike.%${player}%`)
+        .join(",");
+      query = query.or(orFilters);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Tier-scoped stat lookup error:", error.message);
+      return null;
+    }
+
+    const mappedRows = ((data ?? []) as EventPlayerStatsRow[]).map((row) =>
+      mapEventPlayerStatsRow(row, `tier_${requestedTier}`)
+    );
+
+    return applyLocalFilters(mappedRows, parsedQuery);
+  } catch (error: any) {
+    console.error("Tier-scoped stats retrieval failed:", error.message);
     return null;
   }
 }
@@ -974,7 +1091,7 @@ export async function retrieveStats(
   const eventGroupId = parsedQuery.filters.eventGroupId ?? null;
   const metricSortKey = getMetricSortKey(parsedQuery.metric);
   const canUseMockFallback = process.env.NODE_ENV !== "production";
-  const referencedEvent = await findReferencedEvent(parsedQuery.normalizedQuestion);
+  const referencedEvent = await findReferencedEvent(parsedQuery);
 
   if (parsedQuery.entity === "match") {
     const directMatches = await retrieveMatchesFromSupabase(parsedQuery);
@@ -1012,18 +1129,21 @@ export async function retrieveStats(
         parsedQuery,
         event: referencedEvent,
       }),
+      parsedQuery.intent === "event_lookup" ||
       isEventContextQuestion(parsedQuery.normalizedQuestion)
         ? retrieveEventMatchesFromSupabase(referencedEvent)
         : Promise.resolve([]),
     ]);
 
     if (eventRows !== null) {
-      const sortedRows = [...eventRows].sort(
-        (a, b) => Number(b[metricSortKey]) - Number(a[metricSortKey])
+      const sortedRows = [...eventRows].sort((a, b) =>
+        parsedQuery.sort === "asc"
+          ? Number(a[metricSortKey]) - Number(b[metricSortKey])
+          : Number(b[metricSortKey]) - Number(a[metricSortKey])
       );
 
       return {
-        rows: sortedRows.slice(0, 10),
+        rows: sortedRows.slice(0, parsedQuery.limit),
         retrievalMeta: {
           source: "event_storage",
           appliedRegion: region,
@@ -1048,21 +1168,53 @@ export async function retrieveStats(
     }
   }
 
+  if (isTierScopedQuery(parsedQuery)) {
+    const tierScopedRows = await retrieveTierScopedStatsFromSupabase(parsedQuery);
+
+    if (tierScopedRows !== null) {
+      const sortedRows = [...tierScopedRows].sort((a, b) =>
+        parsedQuery.sort === "asc"
+          ? Number(a[metricSortKey]) - Number(b[metricSortKey])
+          : Number(b[metricSortKey]) - Number(a[metricSortKey])
+      );
+
+      return {
+        rows: sortedRows.slice(0, parsedQuery.limit),
+        retrievalMeta: {
+          source: "event_storage",
+          appliedRegion: region,
+          appliedTimespanDays: timespanDays,
+          appliedEventGroupId: eventGroupId,
+          appliedEventName: `tier_${parsedQuery.filters.tier}`,
+          rowCount: tierScopedRows.length,
+        },
+        contextData: {
+          event: null,
+          matches: [],
+        },
+      };
+    }
+  }
+
   const supabaseRows = await retrieveStatsFromSupabase(parsedQuery);
 
   const rows =
     supabaseRows !== null
-      ? [...supabaseRows].sort(
-          (a, b) => Number(b[metricSortKey]) - Number(a[metricSortKey])
+      ? [...supabaseRows].sort((a, b) =>
+          parsedQuery.sort === "asc"
+            ? Number(a[metricSortKey]) - Number(b[metricSortKey])
+            : Number(b[metricSortKey]) - Number(a[metricSortKey])
         )
       : canUseMockFallback
-        ? applyLocalFilters(MOCK_PLAYER_STATS, parsedQuery).sort(
-            (a, b) => Number(b[metricSortKey]) - Number(a[metricSortKey])
+        ? applyLocalFilters(MOCK_PLAYER_STATS, parsedQuery).sort((a, b) =>
+            parsedQuery.sort === "asc"
+              ? Number(a[metricSortKey]) - Number(b[metricSortKey])
+              : Number(b[metricSortKey]) - Number(a[metricSortKey])
           )
         : [];
 
   return {
-    rows: rows.slice(0, 10),
+    rows: rows.slice(0, parsedQuery.limit),
     retrievalMeta: {
       source:
         supabaseRows !== null || !canUseMockFallback ? "supabase" : "mock",

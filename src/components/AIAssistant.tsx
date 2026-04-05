@@ -5,17 +5,34 @@ import { FormEvent, KeyboardEvent, useState } from "react";
 interface ParsedQuery {
   rawQuestion: string;
   normalizedQuestion: string;
+  intent:
+    | "leaderboard"
+    | "player_lookup"
+    | "team_lookup"
+    | "comparison"
+    | "match_lookup"
+    | "event_lookup";
   comparisonPlayers?: string[];
   metric: string;
-  entity: "player" | "team" | "match" | "general";
+  entity: "player" | "team" | "match" | "event" | "general";
+  sort: "asc" | "desc";
+  limit: number;
   filters: {
     region?: string;
     timespanDays?: number | "all";
+    tier?: number | null;
     eventGroupId?: number | null;
+    eventName?: string | null;
     agent?: string;
+    role?: string | null;
     minRounds?: number;
-    team?: string;
-    player?: string;
+    team?: string | null;
+    player?: string | null;
+    players?: string[];
+    matchTeam?: string | null;
+    opponentTeam?: string | null;
+    status?: string | null;
+    datePreset?: string | null;
   };
 }
 
@@ -69,7 +86,13 @@ interface AIResult {
     }>;
   };
   uiHints?: {
-    intent: "comparison" | "player_lookup" | "team_lookup" | "leaderboard" | "match_lookup";
+    intent:
+      | "comparison"
+      | "player_lookup"
+      | "team_lookup"
+      | "leaderboard"
+      | "match_lookup"
+      | "event_lookup";
     title: string;
     highlightMetric: string;
     highlightPlayers?: string[];

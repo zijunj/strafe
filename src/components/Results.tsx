@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useValorantApiWithCache from "../app/api/Valorant";
 import parseTimeCompleted from "../app/utils/apiFunctions";
 import { useEffect, useState } from "react";
@@ -25,6 +26,17 @@ interface MatchResult {
 }
 
 const RESULTS_PAGE_BATCH_SIZE = 12;
+
+function getMatchHref(matchPage: string) {
+  const matchPath = matchPage.replace("https://www.vlr.gg/", "");
+  const [id, slug] = matchPath.split("/", 2);
+
+  return {
+    id,
+    slug,
+    pathname: `/matches/${id}/${slug}`,
+  };
+}
 
 export default function Results({ pageView, selectedTournament }: ResultsProps) {
   const resultsUrl = "storage/matches?status=completed&backgroundSync=0";
@@ -135,10 +147,14 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                     const score2 = Number(item.score2);
                     const team1Won = score1 > score2;
                     const team2Won = score2 > score1;
+                    const matchHref = getMatchHref(item.match_page);
 
                     return (
-                      <div
+                      <Link
                         key={k}
+                        href={{
+                          pathname: matchHref.pathname,
+                        }}
                         className="flex items-stretch border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-surface-elevated)] transition cursor-pointer"
                       >
                         {/* Left: Time */}
@@ -203,7 +219,7 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>
@@ -257,13 +273,17 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                   .padStart(2, "0");
                 const score1 = Number(item.score1);
                 const score2 = Number(item.score2);
+                const matchHref = getMatchHref(item.match_page);
 
                 const team1Won = score1 > score2;
                 const team2Won = score2 > score1;
 
                 return (
-                  <div
+                  <Link
                     key={j}
+                    href={{
+                      pathname: matchHref.pathname,
+                    }}
                     className="flex items-center gap-4 px-4 py-3 bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-card)] transition border-b border-[var(--color-border-subtle)]"
                   >
                     {/* Left: Time */}
@@ -377,7 +397,7 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
 
                     {/* Spacer */}
                     <div className="flex-shrink-0 w-10" aria-hidden="true" />
-                  </div>
+                  </Link>
                 );
               })}
             </div>

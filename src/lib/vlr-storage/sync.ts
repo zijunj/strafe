@@ -160,6 +160,7 @@ interface MatchRow {
   slug: string | null;
   status: string;
   last_synced_at: string | null;
+  scheduled_at?: string | null;
 }
 
 interface NormalizedMatchRow {
@@ -894,19 +895,12 @@ async function loadTargetMatches(params: SyncTournamentMatchStorageParams) {
 
   let query = supabase
     .from("matches")
-    .select("id, vlr_match_id, slug, status, last_synced_at");
+    .select("id, vlr_match_id, slug, status, last_synced_at, scheduled_at");
 
   if (params.matchIds?.length) {
     query = query.in("vlr_match_id", params.matchIds);
   } else {
-    query = query
-      .in("status", ["live", "upcoming"])
-      .order("last_synced_at", { ascending: true, nullsFirst: true })
-      .limit(matchDetailsLimit ?? 50);
-  }
-
-  if (params.matchIds?.length && matchDetailsLimit) {
-    query = query.limit(matchDetailsLimit);
+    query = query.in("status", ["live", "upcoming"]);
   }
 
   const { data, error } = await query;
@@ -915,7 +909,56 @@ async function loadTargetMatches(params: SyncTournamentMatchStorageParams) {
     throw new Error(`Failed to load matches for detail sync: ${error.message}`);
   }
 
-  return (data ?? []) as MatchRow[];
+  const rows = (data ?? []) as MatchRow[];
+
+  const getStatusPriority = (status: string) => {
+    if (status === "live") {
+      return 0;
+    }
+
+    if (status === "upcoming") {
+      return 1;
+    }
+
+    return 2;
+  };
+
+  const getScheduledPriority = (value: string | null | undefined) => {
+    if (!value) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+  };
+
+  const getSyncedPriority = (value: string | null | undefined) => {
+    if (!value) {
+      return Number.MIN_SAFE_INTEGER;
+    }
+
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? Number.MIN_SAFE_INTEGER : parsed;
+  };
+
+  const sortedRows = [...rows].sort((a, b) => {
+    const statusDiff = getStatusPriority(a.status) - getStatusPriority(b.status);
+
+    if (statusDiff !== 0) {
+      return statusDiff;
+    }
+
+    const scheduledDiff =
+      getScheduledPriority(a.scheduled_at) - getScheduledPriority(b.scheduled_at);
+
+    if (scheduledDiff !== 0) {
+      return scheduledDiff;
+    }
+
+    return getSyncedPriority(a.last_synced_at) - getSyncedPriority(b.last_synced_at);
+  });
+
+  return sortedRows.slice(0, matchDetailsLimit ?? 50);
 }
 
 async function syncMatchDetails(params: SyncTournamentMatchStorageParams) {

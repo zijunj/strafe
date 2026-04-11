@@ -210,6 +210,7 @@ const UPSTREAM_FETCH_TIMEOUT_MS = 15000;
 const UPSTREAM_FETCH_MAX_RETRIES = 3;
 const MATCH_DETAIL_REQUEST_DELAY_MS = 600;
 const UPCOMING_MATCH_STALE_BUFFER_HOURS = 6;
+const ACTIVE_MATCH_CLEANUP_BUFFER_HOURS = 6;
 
 function getBaseUrl() {
   const baseUrl = process.env.VLR_API_BASE_URL;
@@ -697,6 +698,85 @@ async function syncMatches(params: SyncTournamentMatchStorageParams) {
       };
     })
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
+
+  const activeUpstreamMatchIds = new Set(
+    upstreamMatches
+      .filter((match) => match.status === "live" || match.status === "upcoming")
+      .map((match) => match.vlr_match_id),
+  );
+
+  const staleThresholdIso = new Date(
+    Date.now() - ACTIVE_MATCH_CLEANUP_BUFFER_HOURS * 60 * 60 * 1000,
+  ).toISOString();
+
+  let existingActiveMatchesQuery = supabase
+    .from("matches")
+    .select("id, vlr_match_id, scheduled_at, status")
+    .in("status", ["live", "upcoming"]);
+
+  if (params.matchIds?.length) {
+    existingActiveMatchesQuery = existingActiveMatchesQuery.in(
+      "vlr_match_id",
+      params.matchIds,
+    );
+  } else if (params.eventIds?.length) {
+    const targetedEventIds = events.map((event) => event.id);
+
+    if (targetedEventIds.length > 0) {
+      existingActiveMatchesQuery = existingActiveMatchesQuery.in(
+        "event_id",
+        targetedEventIds,
+      );
+    }
+  }
+
+  const { data: existingActiveMatches, error: existingActiveMatchesError } =
+    await existingActiveMatchesQuery;
+
+  if (existingActiveMatchesError) {
+    throw new Error(
+      `Failed to load existing active matches: ${existingActiveMatchesError.message}`,
+    );
+  }
+
+  const staleMatchIds = (existingActiveMatches ?? [])
+    .filter((match) => {
+      const scheduledAt = match.scheduled_at;
+      const isMissingFromUpstream = !activeUpstreamMatchIds.has(match.vlr_match_id);
+
+      if (!isMissingFromUpstream) {
+        return false;
+      }
+
+      if (match.status === "live") {
+        return true;
+      }
+
+      if (!scheduledAt) {
+        return false;
+      }
+
+      const isPastCleanupThreshold = scheduledAt <= staleThresholdIso;
+
+      return isPastCleanupThreshold;
+    })
+    .map((match) => match.id);
+
+  if (staleMatchIds.length > 0) {
+    const { error: staleUpdateError } = await supabase
+      .from("matches")
+      .update({
+        status: "completed",
+        last_synced_at: timestamp,
+      })
+      .in("id", staleMatchIds);
+
+    if (staleUpdateError) {
+      throw new Error(
+        `Failed to mark stale matches completed: ${staleUpdateError.message}`,
+      );
+    }
+  }
 
   if (matchRows.length === 0) {
     return [] as MatchRow[];

@@ -45,6 +45,7 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
     key: "results-storage",
     url: resultsUrl,
     parse: (res) => res.data?.segments || [],
+    useCache: false,
   });
   const [visibleCount, setVisibleCount] = useState(RESULTS_PAGE_BATCH_SIZE);
   const filteredResults = selectedTournament

@@ -22,6 +22,7 @@ export default function MatchesPageClient() {
     key: "matches-major-filters",
     url: "storage/events?limit=300&backgroundSync=0",
     parse: (res) => res.data.segments,
+    useCache: false,
   });
 
   const majorTournaments = tournamentData.filter(

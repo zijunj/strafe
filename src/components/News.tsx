@@ -78,32 +78,26 @@ export default function News({ newsView }: NewsProps) {
         articleImg &&
         (normalizeNewsUrl(item.url_path) === normalizeNewsUrl(articleImg.url) ||
           normalizeNewsTitle(item.title) ===
-            normalizeNewsTitle(articleImg.title) ||
-          normalizeNewsTitle(item.title).includes(
-            normalizeNewsTitle(articleImg.title),
-          ) ||
-          normalizeNewsTitle(articleImg.title).includes(
-            normalizeNewsTitle(item.title),
-          )),
+            normalizeNewsTitle(articleImg.title)),
     ) || null;
 
-  const featured =
-    matchedFeaturedNews ||
-    (articleImg
-      ? {
-          title: articleImg.title,
-          description: articleImg.description || newsData[0]?.description || "",
-          date: newsData[0]?.date || "",
-          author: newsData[0]?.author || "",
-          url_path: articleImg.url,
-        }
-      : newsData[0]);
+  const featured = articleImg
+    ? {
+        title: articleImg.title,
+        description:
+          matchedFeaturedNews?.description || articleImg.description || "",
+        date: matchedFeaturedNews?.date || "",
+        author: matchedFeaturedNews?.author || "",
+        url_path: articleImg.url,
+      }
+    : newsData[0];
 
   const featuredImage = articleImg?.img || null;
 
   const rest = newsData.filter((item) =>
     featured
-      ? normalizeNewsUrl(item.url_path) !== normalizeNewsUrl(featured.url_path)
+      ? normalizeNewsUrl(item.url_path) !==
+        normalizeNewsUrl(featured.url_path || "")
       : true,
   );
 

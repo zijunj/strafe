@@ -156,6 +156,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
       key: "upcomingMatches-storage",
       url: upcomingMatchesUrl,
       parse: (res) => res.data.segments,
+      useCache: false,
     });
 
   const { data: liveMatchData = [], loading: liveMatchesLoading } =
@@ -163,6 +164,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
       key: "liveMatches-storage",
       url: liveMatchesUrl,
       parse: (res) => res.data.segments,
+      useCache: false,
     });
 
   const { data: tournamentData = [], loading: tournamentsLoading } =
@@ -170,6 +172,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
       key: "tournaments-storage",
       url: tournamentsUrl,
       parse: (res) => res.data.segments,
+      useCache: false,
     });
 
   const matchData = [...liveMatchData, ...upcomingMatchData].sort((a, b) => {

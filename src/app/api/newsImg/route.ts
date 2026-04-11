@@ -5,6 +5,7 @@ import { createServiceRoleSupabaseClient } from "@/lib/supabase/server";
 import { isAuthorizedSyncRequest } from "@/lib/server/syncAuth";
 
 const FEATURED_NEWS_CACHE_KEY = "vlr-homepage-featured";
+const NEWS_CACHE_KEY = "vlr-news-list";
 const NEWS_FEATURED_STALE_HOURS = 6;
 
 type FeaturedArticle = {
@@ -13,6 +14,28 @@ type FeaturedArticle = {
   title: string | null;
   description: string | null;
 };
+
+type NewsListArticle = {
+  title: string;
+  description: string;
+  url_path: string;
+};
+
+function normalizeVlrUrl(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  if (value.startsWith("//")) {
+    return `https:${value}`;
+  }
+
+  return `https://www.vlr.gg${value.startsWith("/") ? value : `/${value}`}`;
+}
 
 function isStale(lastSyncedAt: string | null | undefined, staleHours: number) {
   if (!lastSyncedAt) {
@@ -64,6 +87,58 @@ async function writeCachedFeaturedArticles(articles: FeaturedArticle[]) {
   }
 }
 
+async function readCachedNewsArticles() {
+  const supabase = createServiceRoleSupabaseClient();
+  const { data, error } = await supabase
+    .from("news_articles_cache")
+    .select("segments")
+    .eq("cache_key", NEWS_CACHE_KEY)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to read news list cache: ${error.message}`);
+  }
+
+  return Array.isArray(data?.segments) ? (data.segments as NewsListArticle[]) : [];
+}
+
+async function scrapeArticleMetadata(
+  url: string,
+  fallbackTitle?: string | null,
+  fallbackDescription?: string | null,
+) {
+  const articleRes = await axios.get(url, {
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+    },
+    timeout: 15000,
+  });
+
+  const articlePage = cheerio.load(articleRes.data);
+  const img =
+    articlePage("meta[property='og:image']").attr("content") ||
+    articlePage("meta[name='twitter:image']").attr("content") ||
+    null;
+  const title =
+    articlePage("meta[property='og:title']").attr("content") ||
+    fallbackTitle ||
+    null;
+  const description =
+    articlePage("meta[property='og:description']").attr("content") ||
+    articlePage("meta[name='description']").attr("content") ||
+    fallbackDescription ||
+    null;
+
+  return {
+    url,
+    img: img ? normalizeVlrUrl(img) : null,
+    title,
+    description,
+  };
+}
+
 async function scrapeFeaturedArticles() {
   const res = await axios.get("https://www.vlr.gg/", {
     headers: {
@@ -75,14 +150,13 @@ async function scrapeFeaturedArticles() {
   });
   const $ = cheerio.load(res.data);
 
-  return $(".wf-card.news-feature")
+  const homepageFeatured = $(".wf-card.news-feature")
     .map((_, el) => {
       const relativeUrl = $(el).attr("href");
       const imgSrc = $(el).find("img").attr("src");
-      const title = $(el)
-        .find(".news-feature-caption .wf-spoiler-visible")
-        .text()
-        .trim();
+      const title =
+        $(el).find(".news-feature-caption > div").first().text().trim() ||
+        $(el).find(".news-feature-caption").text().trim();
       const description = $(el)
         .find(".news-feature-caption")
         .contents()
@@ -94,14 +168,65 @@ async function scrapeFeaturedArticles() {
         .trim();
 
       return {
-        url: relativeUrl ? `https://www.vlr.gg${relativeUrl}` : null,
-        img: imgSrc ? (imgSrc.startsWith("//") ? `https:${imgSrc}` : imgSrc) : null,
+        url: relativeUrl ? normalizeVlrUrl(relativeUrl) : null,
+        img: imgSrc ? normalizeVlrUrl(imgSrc) : null,
         title: title || null,
         description: description || null,
       };
     })
     .get()
     .filter((article) => article.img && article.title) as FeaturedArticle[];
+
+  if (homepageFeatured.length > 0) {
+    return homepageFeatured;
+  }
+
+  const newsListArticles = await readCachedNewsArticles().catch((error) => {
+    console.error(error);
+    return [];
+  });
+
+  const dedupedCandidates = Array.from(
+    new Map(
+      newsListArticles
+        .map((item) => ({
+          url: normalizeVlrUrl(item.url_path),
+          title: item.title,
+          description: item.description,
+        }))
+        .filter((item) => item.url && item.title)
+        .map((item) => [item.url, item]),
+    ).values(),
+  ).slice(0, 5);
+
+  const fallbackArticles = await Promise.all(
+    dedupedCandidates.map(async (item) => {
+      try {
+        return await scrapeArticleMetadata(
+          item.url,
+          item.title,
+          item.description,
+        );
+      } catch (error) {
+        console.error(
+          `Failed to scrape article metadata for ${item.url}:`,
+          error,
+        );
+        return null;
+      }
+    }),
+  );
+
+  return fallbackArticles.filter(
+    (
+      article,
+    ): article is {
+      url: string;
+      img: string;
+      title: string;
+      description: string | null;
+    } => Boolean(article?.url && article?.img && article?.title),
+  );
 }
 
 export async function GET(req: NextRequest) {
@@ -139,7 +264,9 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("Scrape error:", err);
     const cached = await readCachedFeaturedArticles().catch(() => null);
-    const cachedArticles = Array.isArray(cached?.articles) ? cached.articles : [];
+    const cachedArticles = Array.isArray(cached?.articles)
+      ? cached.articles
+      : [];
     return NextResponse.json({ articles: cachedArticles, source: "cache" });
   }
 }

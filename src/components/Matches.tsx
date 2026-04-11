@@ -25,6 +25,7 @@ interface MatchItem {
   status?: string;
   score1?: string | null;
   score2?: string | null;
+  region?: string | null;
 }
 
 interface TournamentItem {
@@ -128,7 +129,7 @@ function MatchRow({
 
         <div className="min-w-[15%] text-right">
           <span className="text-sm text-[var(--color-text-muted)] truncate">
-            {tournament?.region || ""}
+            {item.region || tournament?.region || ""}
           </span>
         </div>
 

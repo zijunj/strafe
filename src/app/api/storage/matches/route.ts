@@ -16,6 +16,7 @@ interface StoredMatchDetailsRow {
 
 interface StoredEventRow {
   thumb?: string | null;
+  region?: string | null;
 }
 
 function isStale(lastSyncedAt: string | null | undefined, staleMinutes: number) {
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from("matches")
       .select(
-        "id, vlr_match_id, event_id, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, scheduled_at, date_label, match_url, status, last_synced_at, events(thumb), match_details(payload)"
+        "id, vlr_match_id, event_id, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, scheduled_at, date_label, match_url, status, last_synced_at, events(thumb, region), match_details(payload)"
       )
       .limit(Number.isFinite(limit) ? limit : 100);
 
@@ -155,6 +156,7 @@ export async function GET(req: NextRequest) {
         team1_logo: teams[0]?.logo || null,
         team2_logo: teams[1]?.logo || null,
         tournament_logo: event?.thumb || null,
+        region: event?.region || null,
         score1: row.team_1_score,
         score2: row.team_2_score,
         unix_timestamp: row.scheduled_at,

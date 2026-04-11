@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useValorantApiWithCache from "@/app/api/Valorant";
 import { useEffect, useState } from "react";
 
@@ -22,6 +23,8 @@ interface MatchDetails {
   team2_score?: string;
   maps?: MatchMapSummary[];
   teamStats?: MatchTeamStats[];
+  tournament_vlr_event_id?: number | null;
+  tournament_slug?: string | null;
 }
 
 interface H2HMatch {
@@ -108,18 +111,22 @@ interface StoredMatchRecord {
   team_2_score?: string | null;
   events?:
     | {
+        vlr_event_id?: number | null;
         title?: string | null;
         thumb?: string | null;
         dates?: string | null;
         region?: string | null;
         prize?: string | null;
+        event_url?: string | null;
       }
     | Array<{
+        vlr_event_id?: number | null;
         title?: string | null;
         thumb?: string | null;
         dates?: string | null;
         region?: string | null;
         prize?: string | null;
+        event_url?: string | null;
       }>
     | null;
   match_details?: StoredMatchDetailRow[] | StoredMatchDetailRow | null;
@@ -165,6 +172,30 @@ function cleanEventText(value?: string | null) {
     .replace(/\s+/g, " ")
     .replace(/(\d)([A-Z])/g, "$1 $2")
     .trim();
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function getTournamentSlug(eventUrl?: string | null, title?: string | null) {
+  if (eventUrl) {
+    const parts = eventUrl
+      .replace(/^https?:\/\/[^/]+/i, "")
+      .split("/")
+      .filter(Boolean);
+    const slugPart = parts[2];
+
+    if (slugPart) {
+      return slugify(slugPart);
+    }
+  }
+
+  return title ? slugify(title) : null;
 }
 
 function deriveEventName(rawName?: string | null, rawSeries?: string | null) {
@@ -649,6 +680,11 @@ function mapStoredMatchToDetails(storedMatch?: StoredMatchRecord): MatchDetails 
     team2_score: team2Score,
     maps,
     teamStats: resolvedTeamStats,
+    tournament_vlr_event_id: eventData?.vlr_event_id ?? null,
+    tournament_slug: getTournamentSlug(
+      eventData?.event_url,
+      storedMatch.event_title || eventData?.title || payload?.event?.name || null,
+    ),
   };
 }
 
@@ -708,6 +744,8 @@ function mapRouteResponseToDetails(res: MatchRouteResponse): MatchDetails {
       team2_score: team2Score,
       maps,
       teamStats: resolvedTeamStats,
+      tournament_vlr_event_id: null,
+      tournament_slug: null,
     };
   }
 
@@ -1228,14 +1266,18 @@ export default function MatchDetailClient({ id, slug }: Props) {
           </div>
 
           <div className="bg-[#101010] px-6 py-4 border-t border-[#2a2a2a]">
-            <a
-              href={`https://www.vlr.gg/${id}/${slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-center text-[#d2ff4d] text-sm font-semibold hover:underline"
-            >
-              GO TO TOURNAMENT →
-            </a>
+            {resolvedMatch.tournament_vlr_event_id && resolvedMatch.tournament_slug ? (
+              <Link
+                href={`/tournaments/${resolvedMatch.tournament_vlr_event_id}/${resolvedMatch.tournament_slug}`}
+                className="block text-center text-[#d2ff4d] text-sm font-semibold hover:underline"
+              >
+                GO TO TOURNAMENT →
+              </Link>
+            ) : (
+              <span className="block text-center text-gray-500 text-sm font-semibold">
+                TOURNAMENT PAGE UNAVAILABLE
+              </span>
+            )}
           </div>
         </div>
       </div>

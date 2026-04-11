@@ -38,6 +38,15 @@ function getMatchHref(matchPage: string) {
   };
 }
 
+function parseScore(value: string | null | undefined) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export default function Results({ pageView, selectedTournament }: ResultsProps) {
   const resultsUrl = "storage/matches?status=completed&backgroundSync=0";
 
@@ -144,10 +153,12 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                       .toString()
                       .padStart(2, "0");
 
-                    const score1 = Number(item.score1);
-                    const score2 = Number(item.score2);
-                    const team1Won = score1 > score2;
-                    const team2Won = score2 > score1;
+                    const score1 = parseScore(item.score1);
+                    const score2 = parseScore(item.score2);
+                    const team1Won =
+                      score1 !== null && score2 !== null && score1 > score2;
+                    const team2Won =
+                      score1 !== null && score2 !== null && score2 > score1;
                     const matchHref = getMatchHref(item.match_page);
 
                     return (
@@ -191,7 +202,7 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                                 </span>
                               )}
                               <span className="text-xs font-bold text-[var(--color-text-primary)]">
-                                {score1}
+                                {score1 ?? "-"}
                               </span>
                             </div>
                           </div>
@@ -215,7 +226,7 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                                 </span>
                               )}
                               <span className="text-xs font-bold text-[var(--color-text-primary)]">
-                                {score2}
+                                {score2 ?? "-"}
                               </span>
                             </div>
                           </div>
@@ -272,12 +283,14 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                   .getMinutes()
                   .toString()
                   .padStart(2, "0");
-                const score1 = Number(item.score1);
-                const score2 = Number(item.score2);
+                const score1 = parseScore(item.score1);
+                const score2 = parseScore(item.score2);
                 const matchHref = getMatchHref(item.match_page);
 
-                const team1Won = score1 > score2;
-                const team2Won = score2 > score1;
+                const team1Won =
+                  score1 !== null && score2 !== null && score1 > score2;
+                const team2Won =
+                  score1 !== null && score2 !== null && score2 > score1;
 
                 return (
                   <Link
@@ -352,7 +365,7 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                               : "text-[var(--color-text-muted)]"
                           }
                         >
-                          {score1}
+                          {score1 ?? "-"}
                         </span>
                       </div>
                       <div className="text-sm font-semibold leading-6">
@@ -372,7 +385,7 @@ export default function Results({ pageView, selectedTournament }: ResultsProps) 
                               : "text-[var(--color-text-muted)]"
                           }
                         >
-                          {score2}
+                          {score2 ?? "-"}
                         </span>
                       </div>
                     </div>

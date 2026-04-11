@@ -454,6 +454,21 @@ function normalizeResultMatch(segment: VlrResultMatchSegment): NormalizedMatchRo
   const score2 = segment.score2 || null;
   const parsedScore1 = score1 ? Number(score1) : Number.NaN;
   const parsedScore2 = score2 ? Number(score2) : Number.NaN;
+  const hasValidScores =
+    Number.isFinite(parsedScore1) && Number.isFinite(parsedScore2);
+  const hasWinner =
+    hasValidScores && parsedScore1 !== parsedScore2;
+  const hasCompletionLabel =
+    typeof segment.time_completed === "string" &&
+    /ago$/i.test(segment.time_completed.trim());
+
+  if (!hasWinner && !hasCompletionLabel) {
+    return null;
+  }
+
+  if (hasValidScores && parsedScore1 === 0 && parsedScore2 === 0) {
+    return null;
+  }
 
   return {
     vlr_match_id: parsedPage.vlrMatchId,
@@ -465,11 +480,11 @@ function normalizeResultMatch(segment: VlrResultMatchSegment): NormalizedMatchRo
     team_1_score: score1,
     team_2_score: score2,
     team_1_is_winner:
-      Number.isFinite(parsedScore1) && Number.isFinite(parsedScore2)
+      hasValidScores
         ? parsedScore1 > parsedScore2
         : null,
     team_2_is_winner:
-      Number.isFinite(parsedScore1) && Number.isFinite(parsedScore2)
+      hasValidScores
         ? parsedScore2 > parsedScore1
         : null,
     scheduled_at: null,
@@ -1014,7 +1029,7 @@ export async function readStoredMatchDetailsByVlrMatchId(vlrMatchId: number) {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, vlr_match_id, slug, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, match_url, scheduled_at, status, events(id, vlr_event_id, title, region, thumb, dates, prize), match_details(status, source_version, payload, last_synced_at)"
+      "id, vlr_match_id, slug, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, match_url, scheduled_at, status, events(id, vlr_event_id, title, region, thumb, dates, prize, event_url), match_details(status, source_version, payload, last_synced_at)"
     )
     .eq("vlr_match_id", vlrMatchId)
     .maybeSingle();

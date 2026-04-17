@@ -20,6 +20,12 @@ Instead of treating match schedules, tournament listings, news, and stat lookups
 
 ## Screenshots
 
+### Home page
+
+![Strafe home page](./public/strafe-sc.png)
+
+The home page brings the product together in one place. It highlights live match coverage, featured news, tournaments, and recent results so users can quickly understand what is happening across the Valorant esports scene without jumping between separate tools.
+
 ### Matches experience
 
 ![Strafe matches page](./public/stafe-matches-sc.png)

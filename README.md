@@ -18,6 +18,20 @@ Instead of treating match schedules, tournament listings, news, and stat lookups
 - leaderboard-style player stats
 - natural-language AI search for stats and event questions
 
+## Screenshots
+
+### Matches experience
+
+![Strafe matches page](./public/stafe-matches-sc.png)
+
+The matches view is designed to make live and upcoming Valorant coverage feel easy to scan. It groups match data into a more productized schedule experience, with tournament context, team branding, live state, and cleaner navigation into match detail pages.
+
+### AI assistant experience
+
+![Strafe AI page](./public/strafe-ai-sc.png)
+
+The AI assistant view shows how natural-language search fits into the product. Users can ask questions about players, teams, matches, and events, and the app returns a concise answer grounded in structured stats, along with supporting rows and retrieval metadata for transparency.
+
 ## What makes the project interesting
 
 - It blends traditional app UI with data synchronization workflows, not just static frontend pages.
@@ -139,17 +153,6 @@ Extra sync examples:
 node scripts/sync-tournament-match-storage.mjs 2787,2863
 node scripts/sync-tournament-match-storage.mjs all true
 ```
-
-## Supabase and storage
-
-Run the SQL migrations in `supabase/migrations` to create the storage layer used by the app.
-
-Key migration files:
-
-- `supabase/migrations/20260327_tournament_match_storage.sql`
-- `supabase/migrations/20260331_news_articles_cache.sql`
-- `supabase/migrations/20260331_news_featured_cache.sql`
-- `supabase/migrations/20260402_event_tier.sql`
 
 ## Project goals
 

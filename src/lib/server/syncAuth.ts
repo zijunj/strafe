@@ -8,7 +8,7 @@ export function isAuthorizedSyncRequest(req: NextRequest) {
   const configuredSecret = getConfiguredSyncSecret();
 
   if (!configuredSecret) {
-    return true;
+    return false;
   }
 
   const authHeader = req.headers.get("authorization");

@@ -332,19 +332,29 @@ function sortMatchRows(rows: StoredMatchRow[], preset: ParsedQuery["filters"]["d
   });
 }
 
-async function retrieveMatchesFromSupabase(parsedQuery: ParsedQuery) {
+async function retrieveMatchesFromSupabase(
+  parsedQuery: ParsedQuery,
+  options?: {
+    eventIds?: number[];
+  }
+) {
   try {
     const supabase = createServiceRoleSupabaseClient();
     const requestedTeam = parsedQuery.filters.matchTeam;
     const requestedOpponent = parsedQuery.filters.opponentTeam;
     const requestedStatus = parsedQuery.filters.status;
     const dateRange = getDateRangeFromPreset(parsedQuery.filters.datePreset);
+    const eventIds = options?.eventIds ?? [];
 
     let query = supabase
       .from("matches")
       .select(
         "vlr_match_id, event_title, event_series, team_1_name, team_2_name, team_1_score, team_2_score, status, scheduled_at, date_label, match_url, events(region)"
       );
+
+    if (eventIds.length > 0) {
+      query = query.in("event_id", eventIds);
+    }
 
     if (requestedStatus) {
       query = query.eq("status", requestedStatus);
@@ -665,6 +675,98 @@ function getMetricSortKey(metric: ParsedQuery["metric"]): keyof RetrievedStatRow
   }
 }
 
+function getComparisonTargets(parsedQuery: ParsedQuery): string[] {
+  const explicitComparisonPlayers = parsedQuery.comparisonPlayers ?? [];
+  const filteredPlayers = parsedQuery.filters.players ?? [];
+  const comparisonTargets =
+    explicitComparisonPlayers.length > 1 ? explicitComparisonPlayers : filteredPlayers;
+
+  return comparisonTargets
+    .map((player) => normalizeForSearch(player))
+    .filter(Boolean);
+}
+
+function getCoveredComparisonTargets(
+  rows: RetrievedStatRow[],
+  parsedQuery: ParsedQuery
+): string[] {
+  const comparisonTargets = getComparisonTargets(parsedQuery);
+
+  if (comparisonTargets.length === 0) {
+    return [];
+  }
+
+  const coveredTargets = new Set<string>();
+
+  for (const row of rows) {
+    const normalizedRowPlayer = normalizeForSearch(row.player);
+    const matchedTarget = comparisonTargets.find(
+      (target) =>
+        normalizedRowPlayer.includes(target) || target.includes(normalizedRowPlayer)
+    );
+
+    if (matchedTarget) {
+      coveredTargets.add(matchedTarget);
+    }
+  }
+
+  return Array.from(coveredTargets);
+}
+
+function dedupeRowsForComparison(
+  rows: RetrievedStatRow[],
+  parsedQuery: ParsedQuery
+): RetrievedStatRow[] {
+  const comparisonTargets = getComparisonTargets(parsedQuery);
+
+  if (comparisonTargets.length < 2) {
+    return rows;
+  }
+
+  const seenTargets = new Set<string>();
+  const dedupedRows: RetrievedStatRow[] = [];
+
+  for (const row of rows) {
+    const normalizedRowPlayer = normalizeForSearch(row.player);
+    const matchedTarget = comparisonTargets.find(
+      (target) =>
+        normalizedRowPlayer.includes(target) || target.includes(normalizedRowPlayer)
+    );
+
+    if (!matchedTarget || seenTargets.has(matchedTarget)) {
+      continue;
+    }
+
+    seenTargets.add(matchedTarget);
+    dedupedRows.push(row);
+
+    if (seenTargets.size === comparisonTargets.length) {
+      break;
+    }
+  }
+
+  return dedupedRows;
+}
+
+function finalizeRowsForResponse(
+  rows: RetrievedStatRow[],
+  parsedQuery: ParsedQuery,
+  metricSortKey: keyof RetrievedStatRow
+): RetrievedStatRow[] {
+  const sortedRows = [...rows].sort((a, b) =>
+    parsedQuery.sort === "asc"
+      ? Number(a[metricSortKey]) - Number(b[metricSortKey])
+      : Number(b[metricSortKey]) - Number(a[metricSortKey])
+  );
+  const comparisonRows = dedupeRowsForComparison(sortedRows, parsedQuery);
+  const responseLimit = Math.max(
+    parsedQuery.limit,
+    getComparisonTargets(parsedQuery).length || 0
+  );
+
+  return comparisonRows.slice(0, responseLimit);
+}
+
 function getSupabaseMetricColumn(metric: ParsedQuery["metric"]): string {
   switch (metric) {
     case "acs":
@@ -851,15 +953,20 @@ async function retrieveStatsFromSupabaseWithFallback(
   rows: RetrievedStatRow[] | null;
   appliedTimespanDays: 30 | 60 | 90 | "all";
 }> {
+  const comparisonTargets = getComparisonTargets(parsedQuery);
+  const isComparisonQuery = comparisonTargets.length > 1;
   const shouldUseFallbackChain =
+    isComparisonQuery ||
     !parsedQuery.filters.player &&
     !(parsedQuery.filters.players?.length) &&
     !parsedQuery.filters.team &&
     !parsedQuery.filters.eventName;
 
-  const fallbackOrder = shouldUseFallbackChain
-    ? getTimespanFallbackOrder(parsedQuery.filters.timespanDays)
-    : [parsedQuery.filters.timespanDays ?? 30];
+  const fallbackOrder = isComparisonQuery
+    ? ([30, 60, 90, "all"] as const)
+    : shouldUseFallbackChain
+      ? getTimespanFallbackOrder(parsedQuery.filters.timespanDays)
+      : [parsedQuery.filters.timespanDays ?? 30];
 
   let lastResult: {
     rows: RetrievedStatRow[] | null;
@@ -878,7 +985,13 @@ async function retrieveStatsFromSupabaseWithFallback(
       return result;
     }
 
-    if (result.rows.length > 0) {
+    if (isComparisonQuery) {
+      const coveredTargets = getCoveredComparisonTargets(result.rows, parsedQuery);
+
+      if (coveredTargets.length === comparisonTargets.length) {
+        return result;
+      }
+    } else if (result.rows.length > 0) {
       return result;
     }
 
@@ -888,7 +1001,110 @@ async function retrieveStatsFromSupabaseWithFallback(
   return lastResult;
 }
 
-async function findReferencedEvent(parsedQuery: ParsedQuery) {
+function findMatchingStoredEvents(
+  events: StoredEventRow[],
+  searchQuestion: string
+): StoredEventRow[] {
+  const normalizedQuestion = normalizeForSearch(searchQuestion);
+  const prioritizedPhrases = getEventSearchPhrases(searchQuestion);
+  const regionHints = getEventRegionHints(searchQuestion);
+  const scoredMatches: Array<{
+    event: StoredEventRow;
+    score: number;
+    matchedPhrase: string | null;
+  }> = [];
+
+  for (const event of events) {
+    const normalizedTitle = normalizeForSearch(event.title);
+    const normalizedRegion = normalizeForSearch(event.region ?? "");
+
+    if (!normalizedTitle) {
+      continue;
+    }
+
+    let bonusScore = 0;
+
+    if (regionHints) {
+      if (
+        regionHints.titleAliases.some((alias) =>
+          normalizedTitle.includes(normalizeForSearch(alias))
+        )
+      ) {
+        bonusScore += 300;
+      }
+
+      if (
+        normalizedRegion &&
+        regionHints.regionCodes.some((code) => normalizedRegion === code)
+      ) {
+        bonusScore += 50;
+      }
+    }
+
+    const matchedPhrase =
+      prioritizedPhrases.find((phrase) => normalizedTitle.includes(phrase)) ?? null;
+
+    if (matchedPhrase) {
+      scoredMatches.push({
+        event,
+        score: matchedPhrase.length + 5000 + bonusScore,
+        matchedPhrase,
+      });
+      continue;
+    }
+
+    if (normalizedQuestion.includes(normalizedTitle)) {
+      scoredMatches.push({
+        event,
+        score: normalizedTitle.length + 1000 + bonusScore,
+        matchedPhrase: null,
+      });
+      continue;
+    }
+
+    const titleWords = normalizedTitle.split(" ").filter(Boolean);
+    const matchedWords = titleWords.filter((word) =>
+      normalizedQuestion.includes(word)
+    ).length;
+    const titleCoverage = matchedWords / titleWords.length;
+
+    if (matchedWords >= 3 && titleCoverage >= 0.6) {
+      scoredMatches.push({
+        event,
+        score: matchedWords + bonusScore,
+        matchedPhrase: null,
+      });
+    }
+  }
+
+  if (!scoredMatches.length) {
+    return [];
+  }
+
+  scoredMatches.sort((a, b) => b.score - a.score);
+
+  if (prioritizedPhrases.length > 0 && !regionHints) {
+    const familyMatches = scoredMatches.filter(
+      (match) => match.matchedPhrase && prioritizedPhrases.includes(match.matchedPhrase)
+    );
+
+    if (familyMatches.length > 1) {
+      const dedupedFamilyMatches = new Map<number, StoredEventRow>();
+
+      for (const match of familyMatches) {
+        dedupedFamilyMatches.set(match.event.id, match.event);
+      }
+
+      return Array.from(dedupedFamilyMatches.values()).sort((a, b) =>
+        a.title.localeCompare(b.title)
+      );
+    }
+  }
+
+  return [scoredMatches[0].event];
+}
+
+async function findReferencedEvents(parsedQuery: ParsedQuery) {
   try {
     const supabase = createServiceRoleSupabaseClient();
     const { data, error } = await supabase
@@ -898,91 +1114,21 @@ async function findReferencedEvent(parsedQuery: ParsedQuery) {
 
     if (error) {
       console.error("Event lookup error:", error.message);
-      return null;
+      return [];
     }
 
     const searchQuestion =
       parsedQuery.filters.eventName || parsedQuery.normalizedQuestion;
-    const normalizedQuestion = normalizeForSearch(searchQuestion);
-    const prioritizedPhrases = getEventSearchPhrases(searchQuestion);
-    const regionHints = getEventRegionHints(searchQuestion);
-    let bestMatch: StoredEventRow | null = null;
-    let bestScore = 0;
-
-    for (const event of (data ?? []) as StoredEventRow[]) {
-      const normalizedTitle = normalizeForSearch(event.title);
-      const normalizedRegion = normalizeForSearch(event.region ?? "");
-
-      if (!normalizedTitle) {
-        continue;
-      }
-
-      let bonusScore = 0;
-
-      if (regionHints) {
-        if (
-          regionHints.titleAliases.some((alias) =>
-            normalizedTitle.includes(normalizeForSearch(alias))
-          )
-        ) {
-          bonusScore += 300;
-        }
-
-        if (
-          normalizedRegion &&
-          regionHints.regionCodes.some((code) => normalizedRegion === code)
-        ) {
-          bonusScore += 50;
-        }
-      }
-
-      const matchedPhrase = prioritizedPhrases.find((phrase) =>
-        normalizedTitle.includes(phrase)
-      );
-
-      if (matchedPhrase) {
-        const score = matchedPhrase.length + 5000 + bonusScore;
-
-        if (score > bestScore) {
-          bestMatch = event;
-          bestScore = score;
-        }
-
-        continue;
-      }
-
-      if (normalizedQuestion.includes(normalizedTitle)) {
-        const score = normalizedTitle.length + 1000 + bonusScore;
-
-        if (score > bestScore) {
-          bestMatch = event;
-          bestScore = score;
-        }
-
-        continue;
-      }
-
-      const titleWords = normalizedTitle.split(" ").filter(Boolean);
-      const matchedWords = titleWords.filter((word) =>
-        normalizedQuestion.includes(word)
-      ).length;
-      const titleCoverage = matchedWords / titleWords.length;
-
-      if (
-        matchedWords >= 3 &&
-        titleCoverage >= 0.6 &&
-        matchedWords + bonusScore > bestScore
-      ) {
-        bestMatch = event;
-        bestScore = matchedWords + bonusScore;
-      }
-    }
-
-    return bestMatch;
+    return findMatchingStoredEvents((data ?? []) as StoredEventRow[], searchQuestion);
   } catch (error: any) {
     console.error("Referenced event lookup failed:", error.message);
-    return null;
+    return [];
   }
+}
+
+async function findReferencedEvent(parsedQuery: ParsedQuery) {
+  const referencedEvents = await findReferencedEvents(parsedQuery);
+  return referencedEvents[0] ?? null;
 }
 
 async function retrieveEventStatsFromSupabase(params: {
@@ -1175,10 +1321,13 @@ export async function retrieveStats(
   const eventGroupId = parsedQuery.filters.eventGroupId ?? null;
   const metricSortKey = getMetricSortKey(parsedQuery.metric);
   const canUseMockFallback = process.env.NODE_ENV !== "production";
-  const referencedEvent = await findReferencedEvent(parsedQuery);
+  const referencedEvents = await findReferencedEvents(parsedQuery);
+  const referencedEvent = referencedEvents[0] ?? null;
 
   if (parsedQuery.entity === "match") {
-    const directMatches = await retrieveMatchesFromSupabase(parsedQuery);
+    const directMatches = await retrieveMatchesFromSupabase(parsedQuery, {
+      eventIds: referencedEvents.map((event) => event.id),
+    });
 
     return {
       rows: [],
@@ -1187,7 +1336,10 @@ export async function retrieveStats(
         appliedRegion: region,
         appliedTimespanDays: timespanDays,
         appliedEventGroupId: eventGroupId,
-        appliedEventName: referencedEvent?.title ?? null,
+        appliedEventName:
+          referencedEvents.length > 1
+            ? `${referencedEvent?.title ?? "event"} +${referencedEvents.length - 1} more`
+            : referencedEvent?.title ?? null,
         rowCount: directMatches.length,
       },
       contextData: {
@@ -1220,14 +1372,14 @@ export async function retrieveStats(
     ]);
 
     if (eventRows !== null) {
-      const sortedRows = [...eventRows].sort((a, b) =>
-        parsedQuery.sort === "asc"
-          ? Number(a[metricSortKey]) - Number(b[metricSortKey])
-          : Number(b[metricSortKey]) - Number(a[metricSortKey])
+      const responseRows = finalizeRowsForResponse(
+        eventRows,
+        parsedQuery,
+        metricSortKey
       );
 
       return {
-        rows: sortedRows.slice(0, parsedQuery.limit),
+        rows: responseRows,
         retrievalMeta: {
           source: "event_storage",
           appliedRegion: region,
@@ -1256,14 +1408,14 @@ export async function retrieveStats(
     const tierScopedRows = await retrieveTierScopedStatsFromSupabase(parsedQuery);
 
     if (tierScopedRows !== null) {
-      const sortedRows = [...tierScopedRows].sort((a, b) =>
-        parsedQuery.sort === "asc"
-          ? Number(a[metricSortKey]) - Number(b[metricSortKey])
-          : Number(b[metricSortKey]) - Number(a[metricSortKey])
+      const responseRows = finalizeRowsForResponse(
+        tierScopedRows,
+        parsedQuery,
+        metricSortKey
       );
 
       return {
-        rows: sortedRows.slice(0, parsedQuery.limit),
+        rows: responseRows,
         retrievalMeta: {
           source: "event_storage",
           appliedRegion: region,
@@ -1286,24 +1438,13 @@ export async function retrieveStats(
 
   const rows =
     supabaseRows !== null
-      ? [...supabaseRows].sort((a, b) =>
-          parsedQuery.sort === "asc"
-            ? Number(a[metricSortKey]) - Number(b[metricSortKey])
-            : Number(b[metricSortKey]) - Number(a[metricSortKey])
-        )
-      : canUseMockFallback
-        ? applyLocalFilters(MOCK_PLAYER_STATS, parsedQuery).sort((a, b) =>
-            parsedQuery.sort === "asc"
-              ? Number(a[metricSortKey]) - Number(b[metricSortKey])
-              : Number(b[metricSortKey]) - Number(a[metricSortKey])
-          )
-        : [];
+      ? finalizeRowsForResponse(supabaseRows, parsedQuery, metricSortKey)
+      : []; // Removed mock fallback - return empty array when no Supabase data
 
   return {
-    rows: rows.slice(0, parsedQuery.limit),
+    rows,
     retrievalMeta: {
-      source:
-        supabaseRows !== null || !canUseMockFallback ? "supabase" : "mock",
+      source: supabaseRows !== null ? "supabase" : "supabase", // Always "supabase" since no mock fallback
       appliedRegion: region,
       appliedTimespanDays:
         supabaseRows !== null ? appliedTimespanDays : timespanDays,

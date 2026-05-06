@@ -129,6 +129,27 @@ function formatTimespan(value?: number | "all") {
   return value === "all" ? "all time" : `${value} days`;
 }
 
+function formatMatchDate(value?: string | null) {
+  if (!value) {
+    return "TBD";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "TBD";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+    timeZoneName: "short",
+  }).format(date);
+}
+
 function getFeaturedPlayer(result: AIResult | null) {
   if (!result) {
     return null;
@@ -238,6 +259,7 @@ export default function AIAssistant() {
   const featuredPlayer = getFeaturedPlayer(result);
   const featuredPlayers = getFeaturedPlayers(result);
   const showPlayerFeature = shouldShowPlayerFeature(result);
+  const supportingMatches = result?.contextData?.matches ?? [];
 
   return (
     <section className="space-y-4">
@@ -467,6 +489,35 @@ export default function AIAssistant() {
               </div>
             )}
 
+            {supportingMatches.length > 0 && (
+              <div className="table-container">
+                <table className="data-table ai-results-table">
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Series</th>
+                      <th>Match</th>
+                      <th>Status</th>
+                      <th>Scheduled</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supportingMatches.map((match) => (
+                      <tr key={match.vlrMatchId}>
+                        <td>{match.eventTitle ?? "Unknown event"}</td>
+                        <td>{match.eventSeries ?? "-"}</td>
+                        <td>
+                          {match.team1 ?? "TBD"} vs {match.team2 ?? "TBD"}
+                        </td>
+                        <td>{match.status}</td>
+                        <td>{formatMatchDate(match.scheduledAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {result?.uiHints?.suggestedFollowUps?.length ? (
               <div className="space-y-2">
                 <p className="label text-[var(--color-primary)]">Follow-ups</p>
@@ -562,42 +613,75 @@ export default function AIAssistant() {
           <h2 className="card-title mt-2">Returned player records</h2>
         </div>
         <div className="card-body">
-          {!result?.supportingData?.length ? (
+          {!result?.supportingData?.length && !supportingMatches.length ? (
             <p className="text-sm text-[var(--color-text-muted)]">
               Supporting rows will appear here after a question runs.
             </p>
           ) : (
-            <div className="table-container">
-              <table className="data-table ai-results-table">
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>Team</th>
-                    <th>Region</th>
-                    <th>Rating</th>
-                    <th>ACS</th>
-                    <th>K/D</th>
-                    <th>ADR</th>
-                    <th>HS%</th>
-                    <th>Rounds</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.supportingData.map((record) => (
-                    <tr key={record.id}>
-                      <td>{record.player}</td>
-                      <td>{record.team}</td>
-                      <td>{record.region}</td>
-                      <td>{record.rating}</td>
-                      <td>{record.acs}</td>
-                      <td>{record.kd}</td>
-                      <td>{record.adr}</td>
-                      <td>{record.hsPercentage}</td>
-                      <td>{record.roundsPlayed}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              {result?.supportingData?.length ? (
+                <div className="table-container">
+                  <table className="data-table ai-results-table">
+                    <thead>
+                      <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>Region</th>
+                        <th>Rating</th>
+                        <th>ACS</th>
+                        <th>K/D</th>
+                        <th>ADR</th>
+                        <th>HS%</th>
+                        <th>Rounds</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.supportingData.map((record) => (
+                        <tr key={record.id}>
+                          <td>{record.player}</td>
+                          <td>{record.team}</td>
+                          <td>{record.region}</td>
+                          <td>{record.rating}</td>
+                          <td>{record.acs}</td>
+                          <td>{record.kd}</td>
+                          <td>{record.adr}</td>
+                          <td>{record.hsPercentage}</td>
+                          <td>{record.roundsPlayed}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              {supportingMatches.length ? (
+                <div className="table-container">
+                  <table className="data-table ai-results-table">
+                    <thead>
+                      <tr>
+                        <th>Event</th>
+                        <th>Series</th>
+                        <th>Match</th>
+                        <th>Status</th>
+                        <th>Scheduled</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supportingMatches.map((match) => (
+                        <tr key={match.vlrMatchId}>
+                          <td>{match.eventTitle ?? "Unknown event"}</td>
+                          <td>{match.eventSeries ?? "-"}</td>
+                          <td>
+                            {match.team1 ?? "TBD"} vs {match.team2 ?? "TBD"}
+                          </td>
+                          <td>{match.status}</td>
+                          <td>{formatMatchDate(match.scheduledAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

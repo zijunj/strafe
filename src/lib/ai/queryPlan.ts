@@ -179,6 +179,17 @@ If the user asks about major tournaments or tier 1 players, set filters.tier to 
 If the question is about schedules, matches, or "who is playing", use match_lookup.
 If the question is about a specific event or tournament context, use event_lookup or match_lookup as appropriate.
 If nothing else fits, use general metric and a reasonable intent.
+
+Region mapping:
+- If the user mentions "North America" or "NA", set filters.region to "na"
+- If the user mentions "EMEA" or "EU" or "Europe", set filters.region to "eu"
+- If the user mentions "Pacific" or "AP" or "Asia-Pacific", set filters.region to "ap"
+- If the user mentions "Brazil" or "BR", set filters.region to "br"
+- If the user mentions "Korea" or "KR", set filters.region to "kr"
+- If the user mentions "Japan" or "JP", set filters.region to "jp"
+- If the user mentions "China" or "CN", set filters.region to "cn"
+- If the user mentions "Oceania" or "OCE", set filters.region to "oce"
+- If no region is mentioned, default to "global"
 `;
 
 function extractJsonObject(content: string) {
@@ -255,17 +266,38 @@ function inferEntityFromIntent(
   }
 }
 
+function inferSortFromIntent(
+  intent: QueryPlan["intent"],
+  entity: QueryPlan["entity"],
+  parsed: any
+): QueryPlan["sort"] {
+  if (queryPlanSortValues.includes(parsed?.sort)) {
+    return parsed.sort;
+  }
+
+  if (intent === "match_lookup" || intent === "event_lookup") {
+    return "asc";
+  }
+
+  if (entity === "match" || entity === "event") {
+    return "asc";
+  }
+
+  return "desc";
+}
+
 function normalizePlannerOutput(parsed: any): QueryPlan {
   const intent = queryPlanIntentValues.includes(parsed?.intent)
     ? parsed.intent
     : inferIntentFromPartialPlan(parsed);
   const entity = inferEntityFromIntent(intent, parsed);
+  const sort = inferSortFromIntent(intent, entity, parsed);
 
   return {
     intent,
     entity,
     metric: parsed?.metric,
-    sort: parsed?.sort,
+    sort,
     limit: parsed?.limit,
     filters:
       parsed?.filters && typeof parsed.filters === "object"

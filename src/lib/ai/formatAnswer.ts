@@ -26,14 +26,23 @@ export interface AIFormattedResponse {
   uiHints: AIResponseUIHints;
 }
 
+function isInsufficientDataAnswer(answer: string) {
+  return (
+    answer.trim().toLowerCase() ===
+    "i could not find enough data to answer that question."
+  );
+}
+
 function buildUIHints(params: {
+  answer: string;
   parsedQuery: ParsedQuery;
   supportingData: RetrievedStatRow[];
 }): AIResponseUIHints {
-  const { parsedQuery, supportingData } = params;
+  const { answer, parsedQuery, supportingData } = params;
   const comparisonPlayers = parsedQuery.comparisonPlayers;
   const team = parsedQuery.filters.team;
   const player = parsedQuery.filters.player;
+  const allowSupportingData = !isInsufficientDataAnswer(answer);
   const metricLabel =
     parsedQuery.metric === "general"
       ? "stats"
@@ -47,7 +56,7 @@ function buildUIHints(params: {
       title: `Compare ${comparisonPlayers.join(" vs ")}`,
       highlightMetric: parsedQuery.metric,
       highlightPlayers: comparisonPlayers,
-      showSupportingData: true,
+      showSupportingData: allowSupportingData && supportingData.length > 0,
       suggestedFollowUps: [
         `Who has the better ${metricLabel}?`,
         `Show ${comparisonPlayers[0]} agents`,
@@ -61,7 +70,7 @@ function buildUIHints(params: {
       title: `${player} ${metricLabel}`,
       highlightMetric: parsedQuery.metric,
       highlightPlayers: [player],
-      showSupportingData: true,
+      showSupportingData: allowSupportingData && supportingData.length > 0,
       suggestedFollowUps: [
         `Show ${player} over 90 days`,
         `What agents does ${player} play?`,
@@ -75,7 +84,7 @@ function buildUIHints(params: {
       title: `${team} ${metricLabel}`,
       highlightMetric: parsedQuery.metric,
       highlightTeam: team,
-      showSupportingData: supportingData.length > 0,
+      showSupportingData: allowSupportingData && supportingData.length > 0,
       suggestedFollowUps: [
         `Who has the best rating on ${team}?`,
         `Show ${team} players by ACS`,
@@ -109,7 +118,7 @@ function buildUIHints(params: {
       intent: "event_lookup",
       title: parsedQuery.filters.eventName || "Event lookup",
       highlightMetric: parsedQuery.metric,
-      showSupportingData: supportingData.length > 0,
+      showSupportingData: allowSupportingData && supportingData.length > 0,
       suggestedFollowUps: [
         "What matches are coming up for this event?",
         "Who has the best rating at this event?",
@@ -128,7 +137,7 @@ function buildUIHints(params: {
             ? `Top tier ${tier} stats`
             : "Top player stats",
     highlightMetric: parsedQuery.metric,
-    showSupportingData: supportingData.length > 0,
+    showSupportingData: allowSupportingData && supportingData.length > 0,
     suggestedFollowUps: [
       "Who leads in rating?",
       "Compare two players by ACS",

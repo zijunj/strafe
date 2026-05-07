@@ -5,6 +5,164 @@ import { buildParsedQueryFromPlan, parseQuery, type ParsedQuery } from "@/lib/ai
 import { planQuestion } from "@/lib/ai/queryPlan";
 import { retrieveStats } from "@/lib/ai/retrieveStats";
 
+const INSUFFICIENT_DATA_ANSWER =
+  "I could not find enough data to answer that question.";
+const UNSUPPORTED_DOMAIN_ANSWER =
+  "I can only answer questions about Valorant players, teams, matches, and events.";
+
+type DomainClassification = "in_domain" | "out_of_domain";
+
+function isClearlyOutOfDomainQuestion(question: string) {
+  const normalized = question.trim().toLowerCase();
+
+  const outOfDomainSignals = [
+    /\bweather\b/,
+    /\bforecast\b/,
+    /\btemperature\b/,
+    /\brain\b/,
+    /\bsnow\b/,
+    /\bhumidity\b/,
+    /\bstock\b/,
+    /\bbitcoin\b/,
+    /\bcrypto\b/,
+    /\brecipe\b/,
+    /\bcook\b/,
+    /\bmovie\b/,
+    /\bfilm\b/,
+    /\btraffic\b/,
+    /\bflight\b/,
+    /\bhotel\b/,
+    /\brestaurant\b/,
+    /\bnews\b/,
+    /\bpresident\b/,
+    /\bprime minister\b/,
+  ];
+
+  const inDomainSignals = [
+    /\bvalorant\b/,
+    /\bvct\b/,
+    /\bplayer\b/,
+    /\bplayers\b/,
+    /\bteam\b/,
+    /\bteams\b/,
+    /\bmatch\b/,
+    /\bmatches\b/,
+    /\bevent\b/,
+    /\btournament\b/,
+    /\bacs\b/,
+    /\badr\b/,
+    /\brating\b/,
+    /\bk\/d\b/,
+    /\bkd\b/,
+    /\bagent\b/,
+    /\bagents\b/,
+    /\bduelist\b/,
+    /\bcontroller\b/,
+    /\binitiator\b/,
+    /\bsentinel\b/,
+    /\bplayoffs?\b/,
+    /\bbracket\b/,
+    /\bmap\b/,
+    /\bmaps\b/,
+    /\bhead[- ]to[- ]head\b/,
+  ];
+
+  return (
+    outOfDomainSignals.some((pattern) => pattern.test(normalized)) &&
+    !inDomainSignals.some((pattern) => pattern.test(normalized))
+  );
+}
+
+function isClearlyInDomainQuestion(question: string) {
+  const normalized = question.trim().toLowerCase();
+
+  const inDomainSignals = [
+    /\bvalorant\b/,
+    /\bvct\b/,
+    /\bplayer\b/,
+    /\bplayers\b/,
+    /\bteam\b/,
+    /\bteams\b/,
+    /\bmatch\b/,
+    /\bmatches\b/,
+    /\bevent\b/,
+    /\btournament\b/,
+    /\bacs\b/,
+    /\badr\b/,
+    /\brating\b/,
+    /\bk\/d\b/,
+    /\bkd\b/,
+    /\bagent\b/,
+    /\bagents\b/,
+    /\bduelist\b/,
+    /\bcontroller\b/,
+    /\binitiator\b/,
+    /\bsentinel\b/,
+    /\bplayoffs?\b/,
+    /\bbracket\b/,
+    /\bmap\b/,
+    /\bmaps\b/,
+    /\bhead[- ]to[- ]head\b/,
+  ];
+
+  return inDomainSignals.some((pattern) => pattern.test(normalized));
+}
+
+async function classifyQuestionDomain(
+  question: string
+): Promise<DomainClassification> {
+  if (isClearlyOutOfDomainQuestion(question)) {
+    return "out_of_domain";
+  }
+
+  if (isClearlyInDomainQuestion(question) || !process.env.OPENAI_API_KEY) {
+    return "in_domain";
+  }
+
+  try {
+    const response = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: "gpt-4o-mini",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `You classify whether a user's question is about Valorant esports.
+Return only one token:
+- in_domain
+- out_of_domain
+
+In-domain means the question is about Valorant players, teams, matches, tournaments, events, schedules, or stats.
+Out-of-domain means the question is about anything else.`,
+          },
+          {
+            role: "user",
+            content: question,
+          },
+        ],
+        max_tokens: 5,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const classification = String(
+      response.data?.choices?.[0]?.message?.content ?? ""
+    )
+      .trim()
+      .toLowerCase();
+
+    return classification === "out_of_domain" ? "out_of_domain" : "in_domain";
+  } catch {
+    return "in_domain";
+  }
+}
+
 async function generateAnswerFromContext(params: {
   question: string;
   parsedQuery: ReturnType<typeof parseQuery>;
@@ -12,7 +170,7 @@ async function generateAnswerFromContext(params: {
 }) {
   // Guard: if no data retrieved, don't call LLM
   if (params.retrievedStats.rows.length === 0 && !params.retrievedStats.contextData?.matches?.length) {
-    return "I could not find enough data to answer that question.";
+    return INSUFFICIENT_DATA_ANSWER;
   }
 
   const systemPrompt = `
@@ -208,6 +366,10 @@ function buildMatchAnswer(question: string, parsedQuery: ReturnType<typeof parse
   return `${match.team1} vs ${match.team2} is ${match.status === "live" ? "live right now" : "scheduled for"} ${formatMatchDate(match.scheduledAt)} in ${match.eventTitle}${match.eventSeries ? ` (${match.eventSeries})` : ""}.`;
 }
 
+function isInsufficientDataAnswer(answer: string) {
+  return answer.trim().toLowerCase() === INSUFFICIENT_DATA_ANSWER.toLowerCase();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { question } = await req.json();
@@ -217,6 +379,40 @@ export async function POST(req: NextRequest) {
         { error: "A question string is required." },
         { status: 400 }
       );
+    }
+
+    const domainClassification = await classifyQuestionDomain(question);
+
+    if (domainClassification === "out_of_domain") {
+      const parsedQuery = parseQuery(question);
+
+      return NextResponse.json({
+        answer: UNSUPPORTED_DOMAIN_ANSWER,
+        parsedQuery,
+        supportingData: [],
+        retrievalMeta: {
+          source: "supabase",
+          appliedRegion: "global",
+          appliedTimespanDays: parsedQuery.filters.timespanDays ?? 30,
+          appliedEventGroupId: parsedQuery.filters.eventGroupId ?? null,
+          appliedEventName: null,
+          rowCount: 0,
+        },
+        contextData: {
+          event: null,
+          matches: [],
+        },
+        uiHints: {
+          intent: parsedQuery.intent,
+          title: "Unsupported question",
+          highlightMetric: parsedQuery.metric,
+          showSupportingData: false,
+          suggestedFollowUps: [
+            "Who has the best rating in North America?",
+            "What matches are coming up for VCT 2026?",
+          ],
+        },
+      });
     }
 
     const plannedQuery = await planQuestion(question);
@@ -239,9 +435,10 @@ export async function POST(req: NextRequest) {
           retrievedStats,
         });
 
-    // If no real data was found, don't show supporting data table
-    const hasRealData = retrievedStats.rows.length > 0 || retrievedStats.contextData?.matches?.length;
-    const supportingDataToReturn = hasRealData ? retrievedStats.rows : [];
+    const shouldHideSupportingData = isInsufficientDataAnswer(answer);
+    const supportingDataToReturn = shouldHideSupportingData
+      ? []
+      : retrievedStats.rows;
 
     return NextResponse.json(
       formatAnswer({

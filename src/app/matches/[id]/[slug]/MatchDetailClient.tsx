@@ -3,6 +3,7 @@
 import Link from "next/link";
 import useValorantApiWithCache from "@/app/api/Valorant";
 import { useEffect, useState } from "react";
+import MatchPreviewSection from "@/components/MatchPreviewSection";
 
 interface MatchDetails {
   match_event: string;
@@ -781,6 +782,17 @@ function getAllPlayers(teamStats?: MatchTeamStats[]) {
   );
 }
 
+function hasMeaningfulPlayerStats(teamStats?: MatchTeamStats[]) {
+  return getAllPlayers(teamStats).some(
+    (player) =>
+      (player.kills ?? 0) > 0 ||
+      (player.deaths ?? 0) > 0 ||
+      (player.assists ?? 0) > 0 ||
+      player.acs !== null ||
+      player.rating !== null
+  );
+}
+
 function getTopPerformer(
   teamStats: MatchTeamStats[] | undefined,
   mode: "kills" | "rating" | "leastDeaths"
@@ -854,9 +866,16 @@ export default function MatchDetailClient({ id, slug }: Props) {
   const displayedTeamStats = selectedMap?.teamStats?.length
     ? selectedMap.teamStats
     : resolvedMatch.teamStats ?? [];
-  const topFragger = getTopPerformer(displayedTeamStats, "kills");
-  const topRated = getTopPerformer(displayedTeamStats, "rating");
-  const leastDeaths = getTopPerformer(displayedTeamStats, "leastDeaths");
+  const hasMeaningfulStats = hasMeaningfulPlayerStats(displayedTeamStats);
+  const topFragger = hasMeaningfulStats
+    ? getTopPerformer(displayedTeamStats, "kills")
+    : null;
+  const topRated = hasMeaningfulStats
+    ? getTopPerformer(displayedTeamStats, "rating")
+    : null;
+  const leastDeaths = hasMeaningfulStats
+    ? getTopPerformer(displayedTeamStats, "leastDeaths")
+    : null;
 
   return (
     <div className="max-w-7xl mx-auto p-6 text-white grid grid-cols-3 gap-6">
@@ -1178,29 +1197,18 @@ export default function MatchDetailClient({ id, slug }: Props) {
           )}
         </div>
 
-        <div className="bg-[#202020] p-4 rounded-lg">
-          <h3 className="font-semibold mb-3">
-            {hasFinishedScore ? "Match Recap" : "Match Preview"}
-          </h3>
-          <p className="text-gray-300 text-sm leading-relaxed">
-            {resolvedMatch.team1} vs {resolvedMatch.team2}
-            {hasFinishedScore ? (
-              <>
-                {" "}
-                finished {resolvedMatch.team1_score} - {resolvedMatch.team2_score} in{" "}
-                <span className="font-bold">{resolvedMatch.match_event}</span>.
-              </>
-            ) : (
-              <>
-                {" "}
-                will be played on{" "}
-                <span className="font-bold">{resolvedMatch.display_date}</span>.
-              </>
-            )}{" "}
-            This is a <span className="font-bold">{resolvedMatch.match_series}</span>{" "}
-            match in the <span className="font-bold">{resolvedMatch.match_event}</span>.
-          </p>
-        </div>
+        <MatchPreviewSection
+          matchId={Number(id)}
+          team1={resolvedMatch.team1}
+          team2={resolvedMatch.team2}
+          eventTitle={resolvedMatch.match_event}
+          matchSeries={resolvedMatch.match_series}
+          displayDate={resolvedMatch.display_date}
+          startTime={resolvedMatch.start_time}
+          hasFinishedScore={hasFinishedScore}
+          team1Score={resolvedMatch.team1_score}
+          team2Score={resolvedMatch.team2_score}
+        />
       </div>
 
       <div className="col-span-1">

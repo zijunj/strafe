@@ -184,6 +184,10 @@ function shouldShowPlayerFeature(result: AIResult | null) {
     return false;
   }
 
+  if (!result.uiHints?.showSupportingData) {
+    return false;
+  }
+
   const hasTopPlayerResult = Boolean(result.supportingData?.[0]?.player);
 
   return (
@@ -454,7 +458,8 @@ export default function AIAssistant() {
               </div>
             )}
 
-            {(result?.supportingData?.length ?? 0) > 0 && (
+            {result?.uiHints?.showSupportingData &&
+            (result?.supportingData?.length ?? 0) > 0 && (
               <div className="table-container">
                 <table className="data-table ai-results-table">
                   <thead>

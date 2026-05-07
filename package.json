@@ -13,6 +13,7 @@
     "sync:tournament-storage": "node scripts/sync-tournament-match-storage.mjs"
   },
   "dependencies": {
+    "@openai/agents": "^0.9.1",
     "@supabase/supabase-js": "^2.57.4",
     "axios": "^1.12.1",
     "cheerio": "^1.1.2",
@@ -21,7 +22,7 @@
     "openai": "^5.20.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "zod": "^3.23.8"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

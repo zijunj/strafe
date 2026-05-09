@@ -19,10 +19,9 @@
     "cheerio": "^1.1.2",
     "dayjs": "^1.11.18",
     "next": "15.5.2",
-    "openai": "^5.20.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

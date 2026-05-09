@@ -1,5 +1,4 @@
 import { Agent, run, tool } from "@openai/agents";
-import { z } from "zod";
 import {
   buildDeterministicMatchPreview,
   getEventContext,
@@ -16,10 +15,15 @@ const getMatchContextTool = tool({
   name: "get_match_context",
   description:
     "Get structured match-page context for a specific Valorant match, including event, stage, timing, scores, and recent head-to-head.",
-  parameters: z.object({
-    matchId: z.number().int().positive(),
-  }),
-  execute: async ({ matchId }) => {
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      matchId: { type: "number" },
+    },
+    required: ["matchId"],
+  },
+  execute: async ({ matchId }: any) => {
     return await getMatchContext(matchId);
   },
 });
@@ -28,12 +32,17 @@ const getRecentTeamMatchFormTool = tool({
   name: "get_recent_team_match_form",
   description:
     "Get recent player form for a team from stored completed matches, using synced match-detail player stats.",
-  parameters: z.object({
-    teamName: z.string().min(1),
-    limit: z.number().int().positive().max(10).default(5),
-  }),
-  execute: async ({ teamName, limit }) => {
-    return await getRecentTeamMatchForm(teamName, limit);
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      teamName: { type: "string" },
+      limit: { type: "number" },
+    },
+    required: ["teamName"],
+  },
+  execute: async ({ teamName, limit }: any) => {
+    return await getRecentTeamMatchForm(teamName, limit ?? 5);
   },
 });
 
@@ -41,12 +50,17 @@ const getEventContextTool = tool({
   name: "get_event_context",
   description:
     "Get stored event metadata such as title, region, dates, prize, and tier.",
-  parameters: z.object({
-    internalEventId: z.number().int().positive().nullable().optional(),
-    vlrEventId: z.number().int().positive().nullable().optional(),
-    eventTitle: z.string().nullable().optional(),
-  }),
-  execute: async ({ internalEventId, vlrEventId, eventTitle }) => {
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      internalEventId: { type: ["number", "null"] },
+      vlrEventId: { type: ["number", "null"] },
+      eventTitle: { type: ["string", "null"] },
+    },
+    required: [],
+  },
+  execute: async ({ internalEventId, vlrEventId, eventTitle }: any) => {
     return await getEventContext({
       internalEventId: internalEventId ?? null,
       vlrEventId: vlrEventId ?? null,
@@ -59,10 +73,15 @@ const getMatchStakesTool = tool({
   name: "get_match_stakes",
   description:
     "Determine why a specific match matters using event stage and bracket context, including likely winner and loser paths when the bracket reveals waiting opponents.",
-  parameters: z.object({
-    matchId: z.number().int().positive(),
-  }),
-  execute: async ({ matchId }) => {
+  parameters: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      matchId: { type: "number" },
+    },
+    required: ["matchId"],
+  },
+  execute: async ({ matchId }: any) => {
     const matchContext = await getMatchContext(matchId);
 
     if (!matchContext) {

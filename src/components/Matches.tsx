@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import useValorantApiWithCache from "../app/api/Valorant";
 import { getMatchStartTime } from "../app/utils/apiFunctions";
-import FallbackImage from "./FallbackImage";
 
 interface MatchProps {
   pageView: string;
@@ -90,7 +89,7 @@ function MatchRow({
             </div>
           ) : null}
           <div className="flex items-center gap-2">
-            <FallbackImage
+            <img
               src={item.team1_logo || "/valorantLogo.png"}
               alt={item.team1 || "Team"}
               className="h-7 w-7 rounded-full object-contain flex-shrink-0"
@@ -99,7 +98,7 @@ function MatchRow({
               {item.team1}
             </span>
             <span className="text-sm text-[var(--color-text-muted)]">vs</span>
-            <FallbackImage
+            <img
               src={item.team2_logo || "/valorantLogo.png"}
               alt={item.team2 || "Team"}
               className="h-7 w-7 rounded-full object-contain flex-shrink-0"
@@ -120,7 +119,7 @@ function MatchRow({
                 {item.match_series}
               </div>
             </div>
-            <FallbackImage
+            <img
               src={item.tournament_logo || "/valorantLogo.png"}
               alt={item.match_event || "Tournament"}
               className="w-10 h-10 object-contain opacity-90 flex-shrink-0"
@@ -254,7 +253,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
 
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                    <FallbackImage
+                    <img
                       src={item.team1_logo || "/valorantLogo.png"}
                       alt={item.team1 || "Team"}
                       className="h-8 w-8 rounded-full object-contain flex-shrink-0"
@@ -277,7 +276,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
                   </div>
 
                   <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5">
-                    <FallbackImage
+                    <img
                       src={item.team2_logo || "/valorantLogo.png"}
                       alt={item.team2 || "Team"}
                       className="h-8 w-8 rounded-full object-contain flex-shrink-0"
@@ -289,7 +288,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
                 </div>
 
                 <div className="hidden min-w-0 shrink-0 items-center gap-3 border-l border-[rgba(255,255,255,0.12)] pl-4 lg:flex">
-                  <FallbackImage
+                  <img
                     src={item.tournament_logo || "/valorantLogo.png"}
                     alt={item.match_event || "Tournament"}
                     className="h-9 w-9 object-contain opacity-90"
@@ -334,7 +333,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
           ).map(([tournament, matches], i) => (
             <div key={i}>
               <div className="flex items-center px-3 py-2 bg-[var(--color-bg-surface-elevated)] border-b border-[var(--color-border-subtle)]">
-                <FallbackImage
+                <img
                   src={matches[0]?.tournament_logo || "/valorantLogo.png"}
                   alt={tournament}
                   className="w-4 h-4 mr-2 object-contain opacity-80"
@@ -380,7 +379,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
                         ) : null}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
-                            <FallbackImage
+                            <img
                               src={item.team1_logo || "/valorantLogo.png"}
                               alt={item.team1 || "Team"}
                               className="h-5 w-5 rounded-full object-contain flex-shrink-0"
@@ -392,7 +391,7 @@ export default function Matches({ pageView, selectedTournament }: MatchProps) {
                         </div>
                         <div className="flex items-center justify-between mt-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            <FallbackImage
+                            <img
                               src={item.team2_logo || "/valorantLogo.png"}
                               alt={item.team2 || "Team"}
                               className="h-5 w-5 rounded-full object-contain flex-shrink-0"

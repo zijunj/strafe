@@ -3,6 +3,7 @@ import {
   scrapeTournamentStatsByEventId,
   type ScrapedTournamentPlayerStat,
 } from "@/lib/vlr-storage/scrapeTournamentStats";
+import crypto from "node:crypto";
 
 interface VlrEventsResponse {
   data?: {
@@ -212,6 +213,9 @@ const UPSTREAM_FETCH_MAX_RETRIES = 3;
 const MATCH_DETAIL_REQUEST_DELAY_MS = 600;
 const UPCOMING_MATCH_STALE_BUFFER_HOURS = 6;
 const ACTIVE_MATCH_CLEANUP_BUFFER_HOURS = 6;
+const REMOTE_ASSET_BUCKET =
+  process.env.SUPABASE_REMOTE_ASSET_BUCKET || "remote-assets";
+const remoteImageCache = new Map<string, Promise<string | null>>();
 
 function getBaseUrl() {
   const baseUrl = process.env.VLR_API_BASE_URL;
@@ -242,6 +246,176 @@ function getUpstreamRequestHeaders() {
     Accept: "application/json,text/html,application/xhtml+xml",
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+  };
+}
+
+function sanitizeStorageKeyPart(value: string | null | undefined) {
+  return (value || "asset")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "asset";
+}
+
+function getImageFileExtension(
+  remoteUrl: string,
+  contentType?: string | null
+) {
+  const normalizedContentType = contentType?.toLowerCase() || "";
+
+  if (normalizedContentType.includes("svg")) return "svg";
+  if (normalizedContentType.includes("png")) return "png";
+  if (normalizedContentType.includes("jpeg") || normalizedContentType.includes("jpg")) {
+    return "jpg";
+  }
+  if (normalizedContentType.includes("webp")) return "webp";
+  if (normalizedContentType.includes("gif")) return "gif";
+
+  try {
+    const pathname = new URL(remoteUrl).pathname.toLowerCase();
+
+    if (pathname.endsWith(".svg")) return "svg";
+    if (pathname.endsWith(".png")) return "png";
+    if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg")) return "jpg";
+    if (pathname.endsWith(".webp")) return "webp";
+    if (pathname.endsWith(".gif")) return "gif";
+  } catch {
+    return "png";
+  }
+
+  return "png";
+}
+
+function isSupabaseStorageUrl(url: string) {
+  return url.includes("/storage/v1/object/");
+}
+
+async function cacheRemoteImage(params: {
+  remoteUrl: string | null | undefined;
+  folder: string;
+  keyHint: string;
+}) {
+  const remoteUrl = params.remoteUrl?.trim();
+
+  if (!remoteUrl) {
+    return null;
+  }
+
+  if (
+    remoteUrl.startsWith("/") ||
+    remoteUrl.startsWith("data:") ||
+    isSupabaseStorageUrl(remoteUrl)
+  ) {
+    return remoteUrl;
+  }
+
+  const existing = remoteImageCache.get(remoteUrl);
+  if (existing) {
+    return existing;
+  }
+
+  const work = (async () => {
+    try {
+      const supabase = createServiceRoleSupabaseClient();
+      const response = await fetch(remoteUrl, {
+        headers: {
+          Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        },
+        signal: AbortSignal.timeout(UPSTREAM_FETCH_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        console.warn(
+          `Remote image fetch failed (${response.status}) for ${remoteUrl}`
+        );
+        return remoteUrl;
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      if (arrayBuffer.byteLength === 0) {
+        return remoteUrl;
+      }
+
+      const extension = getImageFileExtension(
+        remoteUrl,
+        response.headers.get("content-type")
+      );
+      const hash = crypto
+        .createHash("sha1")
+        .update(remoteUrl)
+        .digest("hex")
+        .slice(0, 16);
+      const path = `${params.folder}/${sanitizeStorageKeyPart(
+        params.keyHint
+      )}-${hash}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(REMOTE_ASSET_BUCKET)
+        .upload(path, Buffer.from(arrayBuffer), {
+          contentType: response.headers.get("content-type") || `image/${extension}`,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.warn(
+          `Failed to upload cached remote image ${remoteUrl}: ${uploadError.message}`
+        );
+        return remoteUrl;
+      }
+
+      const { data } = supabase.storage
+        .from(REMOTE_ASSET_BUCKET)
+        .getPublicUrl(path);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.warn(`Failed to cache remote image ${remoteUrl}:`, error);
+      return remoteUrl;
+    }
+  })();
+
+  remoteImageCache.set(remoteUrl, work);
+  return work;
+}
+
+async function cacheEventThumb(
+  event: Pick<VlrEventSegment, "thumb" | "title" | "url_path">
+) {
+  return cacheRemoteImage({
+    remoteUrl: event.thumb,
+    folder: "events",
+    keyHint: event.url_path || event.title,
+  });
+}
+
+async function cacheMatchDetailAssets(detailPayload: VlrMatchDetailsSegment) {
+  const cachedEventLogo = await cacheRemoteImage({
+    remoteUrl: detailPayload.event?.logo,
+    folder: "events",
+    keyHint: detailPayload.event?.name || detailPayload.match_id,
+  });
+
+  const cachedTeams = await Promise.all(
+    (detailPayload.teams ?? []).map(async (team) => ({
+      ...team,
+      logo:
+        (await cacheRemoteImage({
+          remoteUrl: team.logo,
+          folder: "teams",
+          keyHint: `${team.name || team.tag || "team"}-${detailPayload.match_id}`,
+        })) || team.logo,
+    }))
+  );
+
+  return {
+    ...detailPayload,
+    event: {
+      ...detailPayload.event,
+      logo: cachedEventLogo || detailPayload.event?.logo,
+    },
+    teams: cachedTeams,
   };
 }
 
@@ -567,12 +741,14 @@ export async function syncStoredMatchDetailByVlrMatchId(vlrMatchId: number) {
     return false;
   }
 
+  const cachedDetailPayload = await cacheMatchDetailAssets(detailPayload);
+
   const { error } = await supabase.from("match_details").upsert(
     {
       match_id: match.id,
-      status: detailPayload.status || match.status,
+      status: cachedDetailPayload.status || match.status,
       source_version: DEFAULT_MATCH_DETAILS_SOURCE_VERSION,
-      payload: detailPayload,
+      payload: cachedDetailPayload,
       last_synced_at: timestamp,
     },
     { onConflict: "match_id" }
@@ -592,13 +768,16 @@ async function syncEvents() {
   const upstreamEvents = await fetchEventsFromUpstream();
   const timestamp = new Date().toISOString();
 
-  const eventRows = upstreamEvents
-    .map((event) => {
+  const eventRows = (
+    await Promise.all(
+      upstreamEvents.map(async (event) => {
       const vlrEventId = parseVlrEventId(event.url_path);
 
       if (!vlrEventId) {
         return null;
       }
+
+      const cachedThumb = await cacheEventThumb(event);
 
       return {
         vlr_event_id: vlrEventId,
@@ -608,12 +787,14 @@ async function syncEvents() {
         region: event.region || null,
         dates: event.dates || null,
         prize: event.prize || null,
-        thumb: event.thumb || null,
+        thumb: cachedThumb || event.thumb || null,
         event_url: event.url_path || null,
         raw_payload: event,
         last_synced_at: timestamp,
       };
-    })
+      })
+    )
+  )
     .filter(
       (
         row
@@ -1001,12 +1182,14 @@ async function syncMatchDetails(params: SyncTournamentMatchStorageParams) {
       continue;
     }
 
+    const cachedDetailPayload = await cacheMatchDetailAssets(detailPayload);
+
     const { error } = await supabase.from("match_details").upsert(
       {
         match_id: match.id,
-        status: detailPayload.status || match.status,
+        status: cachedDetailPayload.status || match.status,
         source_version: DEFAULT_MATCH_DETAILS_SOURCE_VERSION,
-        payload: detailPayload,
+        payload: cachedDetailPayload,
         last_synced_at: timestamp,
       },
       { onConflict: "match_id" }

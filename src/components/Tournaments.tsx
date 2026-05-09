@@ -3,6 +3,7 @@
 import Link from "next/link";
 import useValorantApiWithCache from "../app/api/Valorant";
 import { getMatchStartTime } from "../app/utils/apiFunctions";
+import FallbackImage from "./FallbackImage";
 
 interface TournamentProps {
   pageView: string;
@@ -215,7 +216,7 @@ function TournamentListRow({
       </div>
       <div className="flex min-w-0 items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg">
-          <img
+          <FallbackImage
             src={tournament.thumb || "/valorantLogo.png"}
             alt={tournament.title}
             className="h-8 w-8 object-contain"
@@ -263,7 +264,7 @@ function NewsListTournamentRow({ tournament }: { tournament: TournamentItem }) {
       className="group flex items-center justify-between rounded-lg p-2 transition hover:bg-[var(--color-bg-surface)]"
     >
       <div className="flex items-center gap-3">
-        <img
+        <FallbackImage
           src={tournament.thumb || "/valorantLogo.png"}
           alt={tournament.title}
           className="h-10 w-10 rounded object-contain"
@@ -361,7 +362,7 @@ export default function Tournaments({
                       className="flex items-center p-4 pr-24"
                     >
                       <div className="mr-4 flex h-14 w-14 items-center justify-center rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)]">
-                        <img
+                        <FallbackImage
                           src={tournament.thumb || "/valorantLogo.png"}
                           alt="logo"
                           className="h-8 w-8 object-contain"
@@ -622,7 +623,7 @@ export default function Tournaments({
 
                           <div className="flex min-w-0 items-center gap-3 px-4">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded">
-                              <img
+                              <FallbackImage
                                 src={tournament.thumb || "/valorantLogo.png"}
                                 alt={tournament.title}
                                 className="h-8 w-8 object-contain"
@@ -661,7 +662,7 @@ export default function Tournaments({
                             <div className="flex items-center justify-start gap-2">
                               {visibleTeams.length > 0
                                 ? visibleTeams.map((team) => (
-                                    <img
+                                    <FallbackImage
                                       key={`${tournament.title}-${team.name}`}
                                       src={team.logo}
                                       alt={team.name}

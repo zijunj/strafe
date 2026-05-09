@@ -18,7 +18,7 @@
     "axios": "^1.12.1",
     "cheerio": "^1.1.2",
     "dayjs": "^1.11.18",
-    "next": "15.5.2",
+    "next": "15.5.15",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "zod": "^4.4.3"
@@ -35,7 +35,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
-    "eslint-config-next": "15.5.2",
+    "eslint-config-next": "15.5.15",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "postcss": "^8.5.6",

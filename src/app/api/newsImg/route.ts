@@ -3,10 +3,13 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/server";
 import { isAuthorizedSyncRequest } from "@/lib/server/syncAuth";
+import crypto from "node:crypto";
 
 const FEATURED_NEWS_CACHE_KEY = "vlr-homepage-featured";
 const NEWS_CACHE_KEY = "vlr-news-list";
 const NEWS_FEATURED_STALE_HOURS = 6;
+const REMOTE_ASSET_BUCKET =
+  process.env.SUPABASE_REMOTE_ASSET_BUCKET || "remote-assets";
 
 type FeaturedArticle = {
   url: string | null;
@@ -49,6 +52,136 @@ function isStale(lastSyncedAt: string | null | undefined, staleHours: number) {
   }
 
   return Date.now() - lastSyncedMs > staleHours * 60 * 60 * 1000;
+}
+
+function sanitizeStorageKeyPart(value: string | null | undefined) {
+  return (value || "news-image")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "news-image";
+}
+
+function getImageFileExtension(
+  remoteUrl: string,
+  contentType?: string | null
+) {
+  const normalizedContentType = contentType?.toLowerCase() || "";
+
+  if (normalizedContentType.includes("svg")) return "svg";
+  if (normalizedContentType.includes("png")) return "png";
+  if (normalizedContentType.includes("jpeg") || normalizedContentType.includes("jpg")) {
+    return "jpg";
+  }
+  if (normalizedContentType.includes("webp")) return "webp";
+  if (normalizedContentType.includes("gif")) return "gif";
+
+  try {
+    const pathname = new URL(remoteUrl).pathname.toLowerCase();
+    if (pathname.endsWith(".svg")) return "svg";
+    if (pathname.endsWith(".png")) return "png";
+    if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg")) return "jpg";
+    if (pathname.endsWith(".webp")) return "webp";
+    if (pathname.endsWith(".gif")) return "gif";
+  } catch {
+    return "png";
+  }
+
+  return "png";
+}
+
+function isSupabaseStorageUrl(url: string) {
+  return url.includes("/storage/v1/object/");
+}
+
+async function cacheFeaturedImage(
+  remoteUrl: string | null | undefined,
+  keyHint: string
+) {
+  const normalizedUrl = remoteUrl?.trim();
+
+  if (!normalizedUrl) {
+    return null;
+  }
+
+  if (
+    normalizedUrl.startsWith("/") ||
+    normalizedUrl.startsWith("data:") ||
+    isSupabaseStorageUrl(normalizedUrl)
+  ) {
+    return normalizedUrl;
+  }
+
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const response = await fetch(normalizedUrl, {
+      headers: {
+        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      console.warn(
+        `Featured news image fetch failed (${response.status}) for ${normalizedUrl}`
+      );
+      return normalizedUrl;
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength === 0) {
+      return normalizedUrl;
+    }
+
+    const hash = crypto
+      .createHash("sha1")
+      .update(normalizedUrl)
+      .digest("hex")
+      .slice(0, 16);
+    const ext = getImageFileExtension(
+      normalizedUrl,
+      response.headers.get("content-type")
+    );
+    const path = `news/${sanitizeStorageKeyPart(keyHint)}-${hash}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(REMOTE_ASSET_BUCKET)
+      .upload(path, Buffer.from(arrayBuffer), {
+        contentType: response.headers.get("content-type") || `image/${ext}`,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.warn(
+        `Failed to cache featured news image ${normalizedUrl}: ${uploadError.message}`
+      );
+      return normalizedUrl;
+    }
+
+    const { data } = supabase.storage
+      .from(REMOTE_ASSET_BUCKET)
+      .getPublicUrl(path);
+
+    return data.publicUrl;
+  } catch (error) {
+    console.warn(`Failed to cache featured news image ${normalizedUrl}:`, error);
+    return normalizedUrl;
+  }
+}
+
+async function cacheFeaturedArticleImages(articles: FeaturedArticle[]) {
+  return Promise.all(
+    articles.map(async (article) => ({
+      ...article,
+      img:
+        (await cacheFeaturedImage(
+          article.img,
+          article.title || article.url || "featured-article"
+        )) || article.img,
+    }))
+  );
 }
 
 async function readCachedFeaturedArticles() {
@@ -178,7 +311,7 @@ async function scrapeFeaturedArticles() {
     .filter((article) => article.img && article.title) as FeaturedArticle[];
 
   if (homepageFeatured.length > 0) {
-    return homepageFeatured;
+    return cacheFeaturedArticleImages(homepageFeatured);
   }
 
   const newsListArticles = await readCachedNewsArticles().catch((error) => {
@@ -217,7 +350,7 @@ async function scrapeFeaturedArticles() {
     }),
   );
 
-  return fallbackArticles.filter(
+  const filteredFallbackArticles = fallbackArticles.filter(
     (
       article,
     ): article is {
@@ -227,6 +360,8 @@ async function scrapeFeaturedArticles() {
       description: string | null;
     } => Boolean(article?.url && article?.img && article?.title),
   );
+
+  return cacheFeaturedArticleImages(filteredFallbackArticles);
 }
 
 export async function GET(req: NextRequest) {

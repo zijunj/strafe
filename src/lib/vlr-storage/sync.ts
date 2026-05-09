@@ -157,6 +157,7 @@ interface EventRow {
 
 interface MatchRow {
   id: number;
+  event_id?: number | null;
   vlr_match_id: number;
   slug: string | null;
   status: string;
@@ -707,7 +708,7 @@ async function loadStoredMatchByVlrMatchId(vlrMatchId: number) {
   const supabase = createServiceRoleSupabaseClient();
   const { data, error } = await supabase
     .from("matches")
-    .select("id, vlr_match_id, slug, status, last_synced_at")
+    .select("id, event_id, vlr_match_id, slug, status, last_synced_at")
     .eq("vlr_match_id", vlrMatchId)
     .maybeSingle();
 
@@ -716,6 +717,31 @@ async function loadStoredMatchByVlrMatchId(vlrMatchId: number) {
   }
 
   return (data as MatchRow | null) ?? null;
+}
+
+async function syncEventThumbFromMatchDetail(params: {
+  eventId?: number | null;
+  eventLogo?: string | null;
+  timestamp: string;
+}) {
+  if (!params.eventId || !params.eventLogo) {
+    return;
+  }
+
+  const supabase = createServiceRoleSupabaseClient();
+  const { error } = await supabase
+    .from("events")
+    .update({
+      thumb: params.eventLogo,
+      last_synced_at: params.timestamp,
+    })
+    .eq("id", params.eventId);
+
+  if (error) {
+    console.warn(
+      `Failed to update cached event thumb for event ${params.eventId}: ${error.message}`
+    );
+  }
 }
 
 export async function syncStoredMatchDetailByVlrMatchId(vlrMatchId: number) {
@@ -759,6 +785,12 @@ export async function syncStoredMatchDetailByVlrMatchId(vlrMatchId: number) {
       `Failed to upsert match details for ${vlrMatchId}: ${error.message}`
     );
   }
+
+  await syncEventThumbFromMatchDetail({
+    eventId: match.event_id,
+    eventLogo: cachedDetailPayload.event?.logo || null,
+    timestamp,
+  });
 
   return true;
 }
@@ -1091,7 +1123,7 @@ async function loadTargetMatches(params: SyncTournamentMatchStorageParams) {
 
   let query = supabase
     .from("matches")
-    .select("id, vlr_match_id, slug, status, last_synced_at, scheduled_at");
+    .select("id, event_id, vlr_match_id, slug, status, last_synced_at, scheduled_at");
 
   if (params.matchIds?.length) {
     query = query.in("vlr_match_id", params.matchIds);
@@ -1200,6 +1232,12 @@ async function syncMatchDetails(params: SyncTournamentMatchStorageParams) {
         `Failed to upsert match details for ${match.vlr_match_id}: ${error.message}`
       );
     }
+
+    await syncEventThumbFromMatchDetail({
+      eventId: match.event_id,
+      eventLogo: cachedDetailPayload.event?.logo || null,
+      timestamp,
+    });
 
     syncedCount += 1;
   }

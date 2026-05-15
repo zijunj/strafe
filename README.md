@@ -4,7 +4,7 @@ A Valorant esports web app focused on turning fragmented competitive data into a
 
 Built with Next.js, React, Supabase, and OpenAI, this project combines live match coverage, tournament browsing, cached news, player stat exploration, and AI-assisted search in one app.
 
-Live site: https://main.dj5wgqe9zayl7.amplifyapp.com/
+Live site: https://strafe-phi.vercel.app/
 
 ## Overview
 
@@ -173,6 +173,6 @@ node scripts/sync-tournament-match-storage.mjs all true
 
 ## Deployment
 
-The repo includes `amplify.yml`, and the current deployment setup is aligned with AWS Amplify.
+The current production deployment is hosted on Vercel.
 
-Production URL: https://main.dj5wgqe9zayl7.amplifyapp.com/
+Production URL: https://strafe-phi.vercel.app/
